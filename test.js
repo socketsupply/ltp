@@ -56,6 +56,9 @@ tape('encode/decode rel pointers', function (t) {
   t.end()
 })
 
+//hmm, here an object is length delimited.
+//in this method, the 
+
 tape('object with length delimiter around it', function (t) {
   var embed_codec = ipd.LengthDelimited(11, ipd.codex.u32, ipd.ObjectCodec([
     ipd.Field('hello', 0, ipd.codex.u32, ipd.codex.string_u32),
@@ -69,5 +72,6 @@ tape('object with length delimiter around it', function (t) {
 
   embed_codec.encode(expected, b, 0)
   t.deepEqual(embed_codec.decode(b, 0), expected)
+  console.log(b)
   t.end()
 })
