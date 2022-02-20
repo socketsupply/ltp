@@ -64,6 +64,7 @@ function LengthDelimited (id, length_codec, value_codec) {
       var length = length_codec.decode(buffer, start)
       var bytes = length_codec.bytes || length_codec.decode.bytes
       var value = value_codec.decode(buffer, start+bytes, start+bytes+length)
+      console.log('decode ld', start, bytes, value)
       ld.decode.bytes = bytes + value_codec.decode.bytes
       return value
     },
@@ -99,8 +100,9 @@ function encodeField(field, value, buffer, start, free) {
     return 0 //field.value_codec.encode.bytes
   }
   else if(field.pointed && field.direct) {
+    ///XXX should it be (start + free)?
     field.direct.encode(free - field.position, buffer, start + field.position)
-    field.pointed.encode(value, buffer, free)
+    field.pointed.encode(value, buffer, start+free)
     return field.pointed.encode.bytes
   }
   else 
@@ -139,6 +141,7 @@ function ObjectCodec(schema) {
   function encode (args, buffer, start, end) {
     var free = min
     if(isNaN(free)) throw new Error('min size was nan')
+    console.log("OC", start, end, free)
     for(var i = 0; i < args.length; i++) {
       var field = schema[i]
       console.log(i, start, free)

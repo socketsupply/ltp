@@ -56,18 +56,18 @@ tape('encode/decode rel pointers', function (t) {
   t.end()
 })
 
-tape('embedded object', function (t) {
+tape('object with length delimiter around it', function (t) {
   var embed_codec = ipd.LengthDelimited(11, ipd.codex.u32, ipd.ObjectCodec([
     ipd.Field('hello', 0, ipd.codex.u32, ipd.codex.string_u32),
     ipd.Field('goodbye', 4, ipd.codex.u32, ipd.codex.string_u32)
   ]))
-/*
-  var wrap_codec = ipd.ObjectCodec([
-    {position: 0, direct: ipd.codex.u32},
-    {position: 4, direct: ipd.codex.u32, pointed: embed_codec
-  ])
-  var size = 4+4+14+4+4+8
-  var b = buffer.alloc( 
-*/
+  var expected = ['hello world!!!', 'whatever']
+  var size =  4 + 4+4 + 14 + 4+4 + 8
+  t.equal(embed_codec.encodingLength( ['hello world!!!', 'whatever']), size)
+
+  var b = Buffer.alloc(size)
+
+  embed_codec.encode(expected, b, 0)
+  t.deepEqual(embed_codec.decode(b, 0), expected)
   t.end()
 })
