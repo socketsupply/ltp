@@ -189,13 +189,36 @@ function ArrayCodec (length_codec, direct_codec, pointed_codec=null) {
     length_codec.encode(value.length*direct_codec.bytes, buffer, start)
     var array_start = length_codec.bytes
     var free = array_start + value.length * direct_codec.bytes
-    
+    //encode into positions, basically the same code as for encoding a struct
+    //except that the codec's are the same and, the position is i*
+    for(var i = 0; i < value.length; i++) {
+      var item = value[i]
+      var position = array_start + i*direct_codec.bytes
+      free += encodeField(position, direct_codec, pointed_codec, buffer, start, free)
+    }
+    encode.bytes = free
   }
+  function decode (buffer, start) {
+    var length = length_codec.decode(buffer, start)
+    var array_start = length_codec.bytes
+    var items = length / direct.codec.bytes
+    var a = new Array(items)
+    for(var i = 0; i < items; i++) {
+      var position = array_start + i*direct_codec.bytes
+      a[i] = decodeField(position, direct_codec, pointed_codec, buffer, start)
+    }
+    return a
+  }
+
   function encodingLength (value) {
     var base = length_codec.bytes + direct_codec.bytes * value.length
     if(pointed_codec)
       return base + value.reduce((size, item) => size + pointed_codec.encodingLength(item), 0)
     return base
+  }
+
+  return {
+    encode, decode, encodingLength
   }
 }
 
