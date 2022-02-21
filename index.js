@@ -93,28 +93,28 @@ field: {
 }
 */
 
-function encodeField(field, value, buffer, start, free) {
-  if(field.direct && !field.pointed) {
-    field.direct.encode(value, buffer, start + field.position)
+function encodeField(position, direct, pointed, value, buffer, start, free) {
+  if(direct && !pointed) {
+    direct.encode(value, buffer, start + position)
     //return new free value
     return 0 //field.value_codec.encode.bytes
   }
-  else if(field.pointed && field.direct) {
+  else if(pointed && direct) {
     ///XXX should it be (start + free)?
-    field.direct.encode(free - field.position, buffer, start + field.position)
-    field.pointed.encode(value, buffer, start+free)
-    return field.pointed.encode.bytes
+    direct.encode(free - position, buffer, start + position)
+    pointed.encode(value, buffer, start+free)
+    return pointed.encode.bytes
   }
   else 
     throw new Error('invalid field, must be direct or pointed & direct')
 }
 
-function decodeField (field, buffer, start) {
-  if(field.direct && !field.pointed)
-    return field.direct.decode(buffer, start + field.position)
-  else if (field.direct && field.pointed) {
-    var rel = field.direct.decode(buffer, start + field.position)
-    return field.pointed.decode(buffer, start + field.position + rel)
+function decodeField (position, direct, pointed, buffer, start) {
+  if(direct && !pointed)
+    return direct.decode(buffer, start + position)
+  else if (direct && pointed) {
+    var rel = direct.decode(buffer, start + position)
+    return pointed.decode(buffer, start + position + rel)
   }
 }
 
@@ -141,19 +141,26 @@ function ObjectCodec(schema) {
   function encode (args, buffer, start, end) {
     var free = min
     if(isNaN(free)) throw new Error('min size was nan')
-    console.log("OC", start, end, free)
     for(var i = 0; i < args.length; i++) {
       var field = schema[i]
-      console.log(i, start, free)
-      free += encodeField(field, args[i], buffer, start, free)
+      free += encodeField(field.position, field.direct, field.pointed, args[i], buffer, start, free)
       if(isNaN(free)) throw new Error('free was nan after field:'+i)
     }
+    //if this was encoded as a pointed field
+    //we need to know how far the free pointer has moved.
+    //hmm, encodeField returns only the pointed bytes used
+    //not the direct bytes, but that's an private interface.
+    //other encoders
+    encode.bytes = free
   }
 
   function decode (buffer, start, end) {
     var a = new Array(schema.length)
-    for(var i = 0; i < schema.length; i++)
-      a[i] = decodeField(schema[i], buffer, start)
+    for(var i = 0; i < schema.length; i++) {
+      var field = schema[i]
+      a[i] = decodeField(field.position, field.direct, field.pointed, buffer, start)
+    }
+    //decode.bytes = ??? 
     return a
   }
 
@@ -169,6 +176,26 @@ function ObjectCodec(schema) {
 
   return {
     encode, decode, encodingLength//, encodedLength
+  }
+}
+
+function ArrayCodec (length_codec, direct_codec, pointed_codec=null) {
+  //the minimum size is the length used to encode 0
+  var empty_size = length_codec.bytes
+  //note. pointed_codec is optional.
+  //direct_codec must be fixed size.
+  function encode (value, buffer, start) {
+    //write the length
+    length_codec.encode(value.length*direct_codec.bytes, buffer, start)
+    var array_start = length_codec.bytes
+    var free = array_start + value.length * direct_codec.bytes
+    
+  }
+  function encodingLength (value) {
+    var base = length_codec.bytes + direct_codec.bytes * value.length
+    if(pointed_codec)
+      return base + value.reduce((size, item) => size + pointed_codec.encodingLength(item), 0)
+    return base
   }
 }
 
