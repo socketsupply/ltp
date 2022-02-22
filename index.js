@@ -1,32 +1,4 @@
-
-function encodingLength (codec, value) {
-  return codec.bytes != null ?  codec.bytes : codec.encodingLength(value)
-}
-
-var codex = {
-  u8: {
-    encode: (value, buffer, start) => { buffer[start] = value & 0xff },
-    decode: (buffer, start) => buffer[start] & 0xff,
-    bytes: 1,
-  },
-  u16: {
-    encode: (value, buffer, start) => { buffer.writeUint16LE(value, start) },
-    decode: (buffer, start) => buffer.readUint16LE(start),
-    bytes: 2,
-  },
-  u32: {
-    encode: (value, buffer, start) => { buffer.writeUint32LE(value, start) },
-    decode: (buffer, start) => buffer.readUint32LE(start),
-    bytes: 4,
-  },
-  u64: {
-//    encode (value, buffer, start) => { buffer.writeUint32LE(value, start),
-//    decode: (buffer, start) => buffer.readUint32LE(start),
-    bytes: 8
-  }
-  //i8, i16, i32, i64 ...
-  
-}
+var codex = require('./codex')
 
 function Field (name, position, direct, pointed) {
   return {
@@ -34,48 +6,24 @@ function Field (name, position, direct, pointed) {
   }
 }
 
-var string = {
-  encode: (value, buffer, start) => {
-    var bytes = Buffer.byteLength(value)
-    console.log(value, buffer, start, bytes)
-    buffer.write(value, start, start+bytes)
-    string.encode.bytes = bytes
-  },
-  decode: (buffer, start, end) => {
-    var value = buffer.toString('utf8', start, end)
-    string.decode.bytes = end - start
-    return value
-  },
-  encodingLength: (value) => Buffer.byteLength(value, 'utf8')
-}
 
-function LengthDelimited (id, length_codec, value_codec) {
-  var ld
-  return ld = {
-    type: id,
-    encode: (value, buffer, start) => {
-      if(isNaN(start)) throw new Error('start cannot be nan')
-      length_codec.encode(value_codec.encodingLength(value), buffer, start)
-      var bytes = length_codec.bytes || length_codec.encode.bytes
-      value_codec.encode(value, buffer, start+bytes)
-      return ld.encode.bytes = bytes + value_codec.encode.bytes
-    },
-    decode: (buffer, start) => {
-      var length = length_codec.decode(buffer, start)
-      var bytes = length_codec.bytes || length_codec.decode.bytes
-      var value = value_codec.decode(buffer, start+bytes, start+bytes+length)
-      console.log('decode ld', start, bytes, value)
-      ld.decode.bytes = bytes + value_codec.decode.bytes
-      return value
-    },
-    encodingLength: (value) => {
-      var length = value_codec.encodingLength(value)
-      return encodingLength(length_codec, length) + length
-    }
+//because the schema could use padding, find the max position + size of that field.
+//because of things like bit packed booleans that might overlap with larger numbers
+//for example, an u64 with a boolean packed into the upper bits (which are at the end, in little endian)
+
+//note, a single variable sized direct field is allowed,
+//because it always starts at the same position.
+
+function getMinimumSize(schema) {
+  if(!schema.length) return 0 //or should an empty schema be a throw?
+  var size = 0
+  for(var i = 0; i < schema.length; i++) {
+    var field = schema[i]
+    size = Math.max(size, field.position + field.direct.bytes)
   }
+  return size   
 }
 
-codex.string_u32 = LengthDelimited(0x10, codex.u32, string)
 
 //does the codec type include the pointer?
 //the assumption with varstruct is that something encodes and it has a length.
@@ -110,29 +58,15 @@ function encodeField(position, direct, pointed, value, buffer, start, free) {
 }
 
 function decodeField (position, direct, pointed, buffer, start) {
-  if(direct && !pointed)
+  if(!direct)
+    throw new Error('field must have direct codec')
+
+  if(!pointed)
     return direct.decode(buffer, start + position)
-  else if (direct && pointed) {
+  else if (pointed) {
     var rel = direct.decode(buffer, start + position)
     return pointed.decode(buffer, start + position + rel)
   }
-}
-
-//because the schema could use padding, find the max position + size of that field.
-//because of things like bit packed booleans that might overlap with larger numbers
-//for example, an u64 with a boolean packed into the upper bits (which are at the end, in little endian)
-
-//note, a single variable sized direct field is allowed,
-//because it always starts at the same position.
-
-function getMinimumSize(schema) {
-  if(!schema.length) return 0 //or should an empty schema be a throw?
-  var size = 0
-  for(var i = 0; i < schema.length; i++) {
-    var field = schema[i]
-    size = Math.max(size, field.position + field.direct.bytes)
-  }
-  return size   
 }
 
 function ObjectCodec(schema) {
@@ -164,6 +98,24 @@ function ObjectCodec(schema) {
     return a
   }
 
+  //I want to be able to decode a path.
+  //foo.bar.baz[10] and do a fixed number of reads
+  //and then decode the value (hopefully a primitive)
+
+  function dereference (buffer, start, index) {
+    var length = min
+    var field = schema[index]
+    if(!field) throw new Error('cannot dereference invalid field')
+    var position = field.position
+    if(!pointed_c)
+      //might be a embedded fixed sized value, not a primitive
+      //so better to return pointer than to decode here
+      //field.direct.decode(buffer, start+position) // ?
+      return start + position //return pointer to direct value
+    else
+      return (start + position) + direct_c.decode(buffer, start + position)
+  }
+
   function encodingLength (value) {
     var v_size = 0
     for(var i = 0; i < schema.length; i++) {
@@ -179,41 +131,58 @@ function ObjectCodec(schema) {
   }
 }
 
-function ArrayCodec (length_codec, direct_codec, pointed_codec=null) {
+function ArrayCodec (length_c, direct_c, pointed_c=null) {
   //the minimum size is the length used to encode 0
-  var empty_size = length_codec.bytes
+  var empty_size = length_c.bytes
   //note. pointed_codec is optional.
   //direct_codec must be fixed size.
   function encode (value, buffer, start) {
     //write the length
-    length_codec.encode(value.length*direct_codec.bytes, buffer, start)
-    var array_start = length_codec.bytes
-    var free = array_start + value.length * direct_codec.bytes
+    length_c.encode(value.length*direct_c.bytes, buffer, start)
+    var array_start = length_c.bytes
+    var free = array_start + value.length * direct_c.bytes
     //encode into positions, basically the same code as for encoding a struct
     //except that the codec's are the same and, the position is i*
     for(var i = 0; i < value.length; i++) {
       var item = value[i]
-      var position = array_start + i*direct_codec.bytes
-      free += encodeField(position, direct_codec, pointed_codec, buffer, start, free)
+      var position = array_start + i*direct_c.bytes
+      free += encodeField(position, direct_c, pointed_c, item, buffer, start, free)
     }
     encode.bytes = free
   }
+
   function decode (buffer, start) {
-    var length = length_codec.decode(buffer, start)
-    var array_start = length_codec.bytes
-    var items = length / direct.codec.bytes
+    var length = length_c.decode(buffer, start)
+    var array_start = length_c.bytes
+    var items = length / direct_c.bytes
     var a = new Array(items)
     for(var i = 0; i < items; i++) {
-      var position = array_start + i*direct_codec.bytes
-      a[i] = decodeField(position, direct_codec, pointed_codec, buffer, start)
+      var position = array_start + i*direct_c.bytes
+      a[i] = decodeField(position, direct_c, pointed_c, buffer, start)
     }
     return a
   }
 
+  //actually we don't want to decode the field
+  //we want to either return the direct value
+  //or a pointer to the indirect.
+
+  function dereference (buffer, start, index) {
+    var length = length_c.decode(buffer, start)
+    var array_start = length_c.bytes
+    var items = length / direct_c.bytes
+    if(index < 0 || index >= items) return undefined
+    var position = array_start + index*direct_c.bytes
+    if(!pointed_c)
+      return start + position //return pointer to direct value
+    else
+      return (start + position) + direct_c.decode(buffer, start + position)
+  }
+
   function encodingLength (value) {
-    var base = length_codec.bytes + direct_codec.bytes * value.length
-    if(pointed_codec)
-      return base + value.reduce((size, item) => size + pointed_codec.encodingLength(item), 0)
+    var base = length_c.bytes + direct_c.bytes * value.length
+    if(pointed_c)
+      return base + value.reduce((size, item) => size + pointed_c.encodingLength(item), 0)
     return base
   }
 
@@ -236,5 +205,5 @@ function ArrayCodec (length_codec, direct_codec, pointed_codec=null) {
 //also, then you know where the array ends, so the element count in the array.
 
 module.exports = {
-  Field, codex, ObjectCodec, getMinimumSize, LengthDelimited
+  Field, codex, ObjectCodec, getMinimumSize, LengthDelimited: codex.LengthDelimited, ArrayCodec
 }
