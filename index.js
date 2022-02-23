@@ -102,18 +102,19 @@ function ObjectCodec(schema) {
   //foo.bar.baz[10] and do a fixed number of reads
   //and then decode the value (hopefully a primitive)
 
-  function dereference (buffer, start, index) {
+  function dereference (index, buffer, start) {
     var length = min
     var field = schema[index]
     if(!field) throw new Error('cannot dereference invalid field')
     var position = field.position
-    if(!pointed_c)
+    console.log('deref', start, position, !!field.direct, !!field.pointed)
+    if(!field.pointed)
       //might be a embedded fixed sized value, not a primitive
       //so better to return pointer than to decode here
       //field.direct.decode(buffer, start+position) // ?
       return start + position //return pointer to direct value
     else
-      return (start + position) + direct_c.decode(buffer, start + position)
+      return (start + position) + field.direct.decode(buffer, start + position)
   }
 
   function encodingLength (value) {
@@ -127,7 +128,7 @@ function ObjectCodec(schema) {
   }
 
   return {
-    encode, decode, encodingLength//, encodedLength
+    encode, decode, dereference, encodingLength//, encodedLength
   }
 }
 
@@ -187,10 +188,27 @@ function ArrayCodec (length_c, direct_c, pointed_c=null) {
   }
 
   return {
-    encode, decode, encodingLength
+    isArray: true,
+    encode, decode, encodingLength, dereference
   }
 }
 
+
+/*
+function createDecodePath(schema, path) {
+  //iterate over the path and collect codec that we'll need for each step.
+  //if it's an object, use the field
+  //if it's an array
+  for(var i = 0; i < path.length; i++) {
+    schema.
+
+  }
+  return function (buffer, start) {
+        
+
+  }
+}
+*/
 //but what about an array?
 //that's surely a special case.
 //it's a variable size, with a single fixed size direct value type.

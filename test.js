@@ -138,3 +138,20 @@ tape('array inside object', function (t) {
 
 })
 
+tape('dereference pointer to specific direct field', function (t) {
+  var schema = [
+    ipd.Field('u8', 0, ipd.codex.u8),
+    ipd.Field('u16', 1, ipd.codex.u16),
+    ipd.Field('u32', 3, ipd.codex.u32, ipd.codex.string_u32)
+  ]
+  var expected = [1, 1000, 'hello']
+  var codec = ipd.ObjectCodec(schema)
+  var b = Buffer.alloc(1+2+ 4+4+5)
+  codec.encode(expected, b, 0)
+  var p = codec.dereference(1, b, 0)
+  t.equal(ipd.codex.u16.decode(b, p), expected[1])
+  var str_p = codec.dereference(2, b, 0)
+  t.equal(ipd.codex.string_u32.decode(b, str_p), expected[2])
+  t.end()
+})
+
