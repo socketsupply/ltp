@@ -243,7 +243,7 @@ tape('Field requires fixed size', function (t) {
   t.end()
 })
 
-tape('nullable fields', function (t) {
+tape('nullable fields, objects', function (t) {
 
   var nf_codec = ipd.ObjectCodec([
     ipd.LengthField('length', 0, ipd.codex.u8),
@@ -260,5 +260,21 @@ tape('nullable fields', function (t) {
 
   //output will always include the null fields explicitly.
   t.deepEqual(nf_codec.decode(b, 0), {...expected, length: 6, hello: null})
+  t.end()
+})
+
+tape('nullable fields, arrays', function (t) {
+
+  var nfa_codec = ipd.ArrayCodec(ipd.codex.u8, ipd.codex.u8, ipd.codex.string_u8, true)
+
+  var expected = ['hello', , 'goodbye']
+  var size = 1 + 3 + 1 + 5 + 1 + 7
+
+  t.equal(nfa_codec.encodingLength(expected), size)
+  var b = Buffer.alloc(size)
+  nfa_codec.encode(expected, b, 0)
+
+  //output will always include the null fields explicitly.
+  t.deepEqual(nfa_codec.decode(b, 0), expected)
   t.end()
 })

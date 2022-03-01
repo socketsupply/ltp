@@ -213,7 +213,9 @@ function ArrayCodec (length_c, direct_c, pointed_c=null) {
     var a = new Array(items)
     for(var i = 0; i < items; i++) {
       var position = array_start + i*direct_c.bytes
-      a[i] = decodeField(position, direct_c, pointed_c, buffer, start)
+      var value = decodeField(position, direct_c, pointed_c, buffer, start)
+      if(value != null)
+        a[i] = value
     }
     return a
   }
@@ -256,22 +258,6 @@ function ArrayCodec (length_c, direct_c, pointed_c=null) {
   }
 }
 
-
-/*
-function createDecodePath(schema, path) {
-  //iterate over the path and collect codec that we'll need for each step.
-  //if it's an object, use the field
-  //if it's an array
-  for(var i = 0; i < path.length; i++) {
-    schema.
-
-  }
-  return function (buffer, start) {
-        
-
-  }
-}
-*/
 //but what about an array?
 //that's surely a special case.
 //it's a variable size, with a single fixed size direct value type.
