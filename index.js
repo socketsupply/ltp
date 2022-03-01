@@ -10,10 +10,10 @@ function assertFixedSize(codec) {
   return codec
 }
 
-function Field (name, position, direct, pointed) {
+function Field (name, position, direct, pointed, isNullable=true) {
   assertFixedSize(direct)
   return {
-    name, position, direct, pointed
+    name, position, direct, pointed, isNullable
   }
 }
 
@@ -69,9 +69,15 @@ function encodeField(position, direct, pointed, value, buffer, start, free) {
   }
   else if(pointed && direct) {
     ///XXX should it be (start + free)?
-    direct.encode(free - position, buffer, start + position)
-    pointed.encode(value, buffer, start+free)
-    return pointed.encode.bytes
+    if(value != null) {
+      direct.encode(free - position, buffer, start + position)
+      pointed.encode(value, buffer, start+free)
+      return pointed.encode.bytes
+    }
+    else {
+      direct.encode(0, buffer, start + position)
+      return 0
+    }
   }
   else 
     throw new Error('invalid field, must be direct or pointed & direct')
@@ -85,7 +91,7 @@ function decodeField (position, direct, pointed, buffer, start) {
     return direct.decode(buffer, start + position)
   else if (pointed) {
     var rel = direct.decode(buffer, start + position)
-    return pointed.decode(buffer, start + position + rel)
+    return rel === 0 ? null : pointed.decode(buffer, start + position + rel)
   }
 }
 
@@ -163,8 +169,13 @@ function ObjectCodec(schema) {
     var v_size = 0
     for(var i = 0; i < schema.length; i++) {
       var field = schema[i]
-      if(field.pointed)
-        v_size += field.pointed.encodingLength(value[field.name])
+      if(field.pointed) {
+        var fv = value[field.name]
+        if(fv != null)
+          v_size += field.pointed.encodingLength(fv)
+        else if(!field.isNullable)
+          throw new Error('field:'+field.name+' is not nullable, but no value provided')
+      }
     }
     return min + v_size
   }
