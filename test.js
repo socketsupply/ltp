@@ -217,3 +217,27 @@ tape('automatic length field', function (t) {
 
   t.end()
 })
+
+tape('isFixedSize', function (t) {
+  var length_codec = ipd.ObjectCodec([
+    ipd.LengthField('length', 0, ipd.codex.u8),
+    ipd.Field('hello', 1, ipd.codex.u32, ipd.codex.string_u32),
+    ipd.Field('goodbye', 5, ipd.codex.u32, ipd.codex.string_u32)
+  ])
+  t.equal(ipd.isFixedSize(length_codec), false)
+  t.equal(ipd.isFixedSize(ipd.codex.u8), true)
+  t.end()
+})
+
+tape('Field requires fixed size', function (t) {
+  //note, it ought to be possible to have a variable length field
+  //in the last position. (But it does mean you cannot add field after that)
+  //because the field always starts in a fixed position.
+  t.throws(() => {
+    var invalid_codec = ipd.ObjectCodec([
+      ipd.Field('hello', 0, ipd.codex.string_u32),
+      ipd.Field('goodbye', 4, ipd.codex.u32)
+    ])
+  })
+  t.end()
+})

@@ -1,12 +1,24 @@
 var codex = require('./codex')
 
+function isFixedSize(codec) {
+  return !isNaN(codec.bytes)
+}
+
+function assertFixedSize(codec) {
+  if(!codec) throw new Error('expected a fixed size codec, got:'+codec)
+  if(!isFixedSize(codec)) throw new Error('codec must be fixed size')
+  return codec
+}
+
 function Field (name, position, direct, pointed) {
+  assertFixedSize(direct)
   return {
     name, position, direct, pointed
   }
 }
 
 function LengthField (name, position, direct) {
+  assertFixedSize(direct)
   if(position !== 0) throw new Error('length position must be zero')
   return {
     name, position: 0, direct, isLength: true
@@ -49,6 +61,7 @@ field: {
 */
 
 function encodeField(position, direct, pointed, value, buffer, start, free) {
+  assertFixedSize(direct)
   if(direct && !pointed) {
     direct.encode(value, buffer, start + position)
     //return new free value
@@ -257,5 +270,6 @@ function createDecodePath(schema, path) {
 //also, then you know where the array ends, so the element count in the array.
 
 module.exports = {
+  isFixedSize, assertFixedSize,
   Field, LengthField, codex, ObjectCodec, getMinimumSize, LengthDelimited: codex.LengthDelimited, ArrayCodec
 }
