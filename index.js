@@ -92,13 +92,14 @@ function decodeField (position, direct, pointed, buffer, start) {
 function ObjectCodec(schema) {
   var min = getMinimumSize(schema)
 
-  function encode (args, buffer, start, end) {
+  function encode (obj, buffer, start, end) {
     var free = min
     if(isNaN(free)) throw new Error('min size was nan')
-    for(var i = 0; i < args.length; i++) {
+    for(var i = 0; i < schema.length; i++) {
       var field = schema[i]
       if(!field.isLength) {
-        free += encodeField(field.position, field.direct, field.pointed, args[i], buffer, start, free)
+        var value = obj[field.name]
+        free += encodeField(field.position, field.direct, field.pointed, value, buffer, start, free)
         if(isNaN(free)) throw new Error('free was nan after field:'+i)
       }
     }
@@ -118,10 +119,10 @@ function ObjectCodec(schema) {
   }
 
   function decode (buffer, start, end) {
-    var a = new Array(schema.length)
+    var a = {} //new Array(schema.length)
     for(var i = 0; i < schema.length; i++) {
       var field = schema[i]
-      a[i] = decodeField(field.position, field.direct, field.pointed, buffer, start)
+      a[field.name] = decodeField(field.position, field.direct, field.pointed, buffer, start)
     }
     //decode.bytes = ??? 
     return a
@@ -159,7 +160,7 @@ function ObjectCodec(schema) {
     for(var i = 0; i < schema.length; i++) {
       var field = schema[i]
       if(field.pointed)
-        v_size += field.pointed.encodingLength(value[i])
+        v_size += field.pointed.encodingLength(value[field.name])
     }
     return min + v_size
   }

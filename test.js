@@ -10,7 +10,7 @@ tape('encode decode a single byte', function (t) {
   var b = Buffer.alloc(size)
 
   var object_c = ipd.ObjectCodec([byte_field])
-  var expected = [123]
+  var expected = {byte: 123}
   object_c.encode(expected, b, 0)
   t.deepEqual(object_c.decode(b, 0), expected)
   t.end()  
@@ -29,7 +29,7 @@ tape('encode decode three values', function (t) {
   var b = Buffer.alloc(size)
 
   var object_c = ipd.ObjectCodec(schema)
-  var expected = [123, 1_000, 1_000_000]
+  var expected = {u8: 123, u16:1_000, u32: 1_000_000}
   object_c.encode(expected, b, 0)
   t.deepEqual(object_c.decode(b, 0), expected)
   t.end()  
@@ -41,7 +41,7 @@ tape('encode/decode rel pointers', function (t) {
     ipd.Field('goodbye', 4, ipd.codex.u32, ipd.codex.string_u32)
   ]
 
-  var expected = ['hello world!!!', 'whatever']
+  var expected = {hello: 'hello world!!!', goodbye: 'whatever'}
   var size = 4+4+14+4+4+8
   t.equal(ipd.getMinimumSize(schema), 8)
 
@@ -64,9 +64,9 @@ tape('object with length delimiter around it', function (t) {
     ipd.Field('hello', 0, ipd.codex.u32, ipd.codex.string_u32),
     ipd.Field('goodbye', 4, ipd.codex.u32, ipd.codex.string_u32)
   ]))
-  var expected = ['hello world!!!', 'whatever']
+  var expected = {hello: 'hello world!!!', goodbye: 'whatever'}
   var size =  4 + 4+4 + 14 + 4+4 + 8
-  t.equal(embed_codec.encodingLength( ['hello world!!!', 'whatever']), size)
+  t.equal(embed_codec.encodingLength(expected), size)
 
   var b = Buffer.alloc(size)
 
@@ -92,9 +92,10 @@ tape('object embedded in another object', function (t) {
   ]))
   var container_codec = ipd.ObjectCodec([
     ipd.Field('number', 0, ipd.codex.u32),
-    ipd.Field('number', 4, ipd.codex.u32, embed_codec)
+    ipd.Field('object', 4, ipd.codex.u32, embed_codec)
   ])
-  var expected = [7, ['hello world!!!', 'whatever']]
+
+  var expected = {number: 7, object: {hello: 'hello world!!!', goodbye: 'whatever'}}
 
   var size =  4 + 4 + 4 + 4+4 + 14 + 4+4 + 8
   t.equal(container_codec.encodingLength(expected), size)
@@ -118,7 +119,7 @@ tape('array inside object', function (t) {
     ipd.Field('number', 0, ipd.codex.u32),
     ipd.Field('array', 4, ipd.codex.u32, embed_codec)
   ])
-  var expected = [7, [1, 2, 3, 1_000, 2_000, 3_000]]
+  var expected = {number: 7, array: [1, 2, 3, 1_000, 2_000, 3_000]}
 
   var size =  4 + 4 + 4 + 4*6
   t.equal(container_codec.encodingLength(expected), size)
@@ -142,16 +143,16 @@ tape('dereference pointer to specific direct field', function (t) {
   var schema = [
     ipd.Field('u8', 0, ipd.codex.u8),
     ipd.Field('u16', 1, ipd.codex.u16),
-    ipd.Field('u32', 3, ipd.codex.u32, ipd.codex.string_u32)
+    ipd.Field('string', 3, ipd.codex.u32, ipd.codex.string_u32)
   ]
-  var expected = [1, 1000, 'hello']
+  var expected = {u8:1, u16:1000, string: 'hello'}
   var codec = ipd.ObjectCodec(schema)
   var b = Buffer.alloc(1+2+ 4+4+5)
   codec.encode(expected, b, 0)
   var p = codec.dereference(b, 0, 1)
-  t.equal(ipd.codex.u16.decode(b, p), expected[1])
+  t.equal(ipd.codex.u16.decode(b, p), expected.u16)
   var str_p = codec.dereference(b, 0, 2)
-  t.equal(ipd.codex.string_u32.decode(b, str_p), expected[2])
+  t.equal(ipd.codex.string_u32.decode(b, str_p), expected.string)
   t.end()
 })
 
@@ -182,7 +183,7 @@ tape('decode nested field', function (t) {
     ipd.Field('number2', 4, ipd.codex.u32),
     ipd.Field('object', 8, ipd.codex.u32, embed_codec)
   ])
-  var expected = [7, 13, ['hello world!!!', 'whatever']]
+  var expected = {number:7, number2:13, object: {hello:'hello world!!!', goodbye: 'whatever'}}
   var size =  4 + 4 + 4 + 4+4 + 14 + 4+4 + 8
   t.equal(container_codec.encodingLength(expected), size)
 
@@ -201,7 +202,7 @@ tape('automatic length field', function (t) {
   ])
 
   var size = 1+ 4+4 +4+5 +4+7
-  var expected = [size, 'hello', 'goodbye']
+  var expected = {length:size, hello:'hello', goodbye:'goodbye'}
   t.equal(length_codec.encodingLength(expected), size)
   var b = Buffer.alloc(size)
   length_codec.encode(expected, b, 0)
@@ -210,7 +211,7 @@ tape('automatic length field', function (t) {
 
   //length field is automatic, encoding without length field will decode with it.
   var b2 = Buffer.alloc(size)
-  var _expected = [, 'hello', 'goodbye']
+  var _expected = {hello:'hello', goodbye:'goodbye'}
   length_codec.encode(_expected, b2, 0)
   t.deepEqual(length_codec.decode(b2, 0), expected)
 
