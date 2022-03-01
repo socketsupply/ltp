@@ -147,21 +147,20 @@ function ObjectCodec(schema) {
     var field = get_field(index)
     if(!field) throw new Error('cannot dereference invalid field:' + index)
     var position = field.position
-//    console.log('deref', start, position,
-// !!field.direct, !!field.pointed)
     if(!field.pointed)
       //might be a embedded fixed sized value, not a primitive
       //so better to return pointer than to decode here
-      //field.direct.decode(buffer, start+position) // ?
       return start + position //return pointer to direct value
-    else
-      return (start + position) + field.direct.decode(buffer, start + position)
+    else {
+      var relp = field.direct.decode(buffer, start + position)
+      if(relp === 0) return -1
+      return (start + position) + relp
+    }
   }
 
   function reflect (index) {
     var field = get_field(index)
     if(!field) throw new Error('invalid field:'+index)
-    console.log('reflect', index, field)
     return field.pointed ? field.pointed : field.direct
   }
 
@@ -232,8 +231,11 @@ function ArrayCodec (length_c, direct_c, pointed_c=null) {
     var position = array_start + index*direct_c.bytes
     if(!pointed_c)
       return start + position //return pointer to direct value
-    else
-      return (start + position) + direct_c.decode(buffer, start + position)
+    else {
+      var relp = direct_c.decode(buffer, start + position)
+      if(relp === 0) return -1
+      return (start + position) + relp
+    }
   }
 
   //so... we need a method to return the codec at an index.
@@ -258,20 +260,28 @@ function ArrayCodec (length_c, direct_c, pointed_c=null) {
   }
 }
 
-//but what about an array?
-//that's surely a special case.
-//it's a variable size, with a single fixed size direct value type.
-//then lots of those.
-//but they could be pointers. if so, the natural woy to encode that would be
-//array.direct -> array, big enough for every item.
-//if they array type is direct, write the items into the array.
-//if the array type is pointed, write the items to the end and pointers into the array.
+function drill (codec, path) {
+  var codex = new Array(path.length) // path.map(index => codec = codec.reflect(index))
+  for(var i = 0; i < path.length; i++) {
+    codex[i] = codec
+    codec = codec.reflect(path[i])
+  }
+  
+  return function (buffer, ptr) {
+    for(var i = 0; i < path.length; i++) {
+      var index = path[i]
+      //console.log('drill', {i, codec, index, path})
+      ptr = codex[i].dereference(buffer, ptr, index)
+      //check for null pointers.
+      if(ptr === -1) return null
 
-//should the array length include all the items?
-//leaning towards... No, because then can have compacted objects with pointer reuse.
-//also, then you know where the array ends, so the element count in the array.
+    }
+    return codec.decode(buffer, ptr)
+  }
+}
+
 
 module.exports = {
-  isFixedSize, assertFixedSize,
+  isFixedSize, assertFixedSize, drill,
   Field, LengthField, codex, ObjectCodec, getMinimumSize, LengthDelimited: codex.LengthDelimited, ArrayCodec
 }

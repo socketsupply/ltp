@@ -156,22 +156,6 @@ tape('dereference pointer to specific direct field', function (t) {
   t.end()
 })
 
-//taking a path, drilling down and reading a field
-//requires an inspectable structure representing the schema.
-//currently, a codec represents a value, but it just closes
-//over any subcodex, and so can encode/decode recursively
-//but not 1
-
-function drill (buffer, ptr, codec, path) {
-  for(var i = 0; i < path.length; i++) {
-    var index = path[i]
-    //console.log('drill', {i, codec, index, path})
-    ptr = codec.dereference(buffer, ptr, index)
-    codec = codec.reflect(index)
-  }
-  return codec.decode(buffer, ptr)
-}
-
 tape('decode nested field', function (t) {
 
   var embed_codec = ipd.ObjectCodec([
@@ -190,7 +174,8 @@ tape('decode nested field', function (t) {
   var b = Buffer.alloc(size)
   console.log(b)
   container_codec.encode(expected, b, 0)
-  t.equal(drill(b, 0, container_codec, ['object', 'goodbye']), 'whatever')
+  var decode_object_goodbye = ipd.drill(container_codec, ['object', 'goodbye'])
+  t.equal(decode_object_goodbye(b, 0), 'whatever')
   t.end()
 })
 
@@ -214,7 +199,6 @@ tape('automatic length field', function (t) {
   var _expected = {hello:'hello', goodbye:'goodbye'}
   length_codec.encode(_expected, b2, 0)
   t.deepEqual(length_codec.decode(b2, 0), expected)
-
 
   t.end()
 })
@@ -276,5 +260,28 @@ tape('nullable fields, arrays', function (t) {
 
   //output will always include the null fields explicitly.
   t.deepEqual(nfa_codec.decode(b, 0), expected)
+  t.end()
+})
+
+tape('nullable fields, drill', function (t) {
+
+  var embed_codec = ipd.ObjectCodec([
+    ipd.Field('hello', 0, ipd.codex.u32, ipd.codex.string_u32),
+    ipd.Field('goodbye', 4, ipd.codex.u32, ipd.codex.string_u32)
+  ])
+  var container_codec = ipd.ObjectCodec([
+    ipd.Field('number', 0, ipd.codex.u32),
+    ipd.Field('number2', 4, ipd.codex.u32),
+    ipd.Field('object', 8, ipd.codex.u32, embed_codec, true)
+  ])
+  var expected = {number:7, number2:13}
+  var size =  4 + 4 + 4 //+ 4+4 + 14 + 4+4 + 8
+  t.equal(container_codec.encodingLength(expected), size)
+  
+  var b = Buffer.alloc(size)
+  container_codec.encode(expected, b, 0)
+  console.log(b)
+  var decode_object_goodbye = ipd.drill(container_codec, ['object', 'goodbye'])
+  t.equal(decode_object_goodbye(b, 0), null)
   t.end()
 })
