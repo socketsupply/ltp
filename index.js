@@ -102,12 +102,13 @@ function ObjectCodec(schema) {
   //foo.bar.baz[10] and do a fixed number of reads
   //and then decode the value (hopefully a primitive)
 
-  function dereference (index, buffer, start) {
+  function dereference (buffer, start, index) {
     var length = min
     var field = schema[index]
-    if(!field) throw new Error('cannot dereference invalid field')
+    if(!field) throw new Error('cannot dereference invalid field:' + index)
     var position = field.position
-    console.log('deref', start, position, !!field.direct, !!field.pointed)
+//    console.log('deref', start, position,
+// !!field.direct, !!field.pointed)
     if(!field.pointed)
       //might be a embedded fixed sized value, not a primitive
       //so better to return pointer than to decode here
@@ -115,6 +116,13 @@ function ObjectCodec(schema) {
       return start + position //return pointer to direct value
     else
       return (start + position) + field.direct.decode(buffer, start + position)
+  }
+
+  function reflect (index) {
+    var field = schema[index]
+    if(!field) throw new Error('invalid field:'+index)
+    console.log('reflect', index, field)
+    return field.pointed ? field.pointed : field.direct
   }
 
   function encodingLength (value) {
@@ -128,7 +136,8 @@ function ObjectCodec(schema) {
   }
 
   return {
-    encode, decode, dereference, encodingLength//, encodedLength
+    type:'object',
+    encode, decode, dereference, reflect, encodingLength//, encodedLength
   }
 }
 
@@ -180,6 +189,15 @@ function ArrayCodec (length_c, direct_c, pointed_c=null) {
       return (start + position) + direct_c.decode(buffer, start + position)
   }
 
+  //so... we need a method to return the codec at an index.
+  //an array should always use one field type.
+  //...and the length isn't addressable.
+  //in this case, 
+
+  function reflect (index) {
+    return pointed_c ? pointed_c : direct_c
+  }
+
   function encodingLength (value) {
     var base = length_c.bytes + direct_c.bytes * value.length
     if(pointed_c)
@@ -189,7 +207,7 @@ function ArrayCodec (length_c, direct_c, pointed_c=null) {
 
   return {
     isArray: true,
-    encode, decode, encodingLength, dereference
+    encode, decode, encodingLength, dereference, reflect
   }
 }
 

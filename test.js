@@ -148,10 +148,47 @@ tape('dereference pointer to specific direct field', function (t) {
   var codec = ipd.ObjectCodec(schema)
   var b = Buffer.alloc(1+2+ 4+4+5)
   codec.encode(expected, b, 0)
-  var p = codec.dereference(1, b, 0)
+  var p = codec.dereference(b, 0, 1)
   t.equal(ipd.codex.u16.decode(b, p), expected[1])
-  var str_p = codec.dereference(2, b, 0)
+  var str_p = codec.dereference(b, 0, 2)
   t.equal(ipd.codex.string_u32.decode(b, str_p), expected[2])
   t.end()
 })
 
+//taking a path, drilling down and reading a field
+//requires an inspectable structure representing the schema.
+//currently, a codec represents a value, but it just closes
+//over any subcodex, and so can encode/decode recursively
+//but not 1
+
+function drill (buffer, ptr, codec, path) {
+  for(var i = 0; i < path.length; i++) {
+    var index = path[i]
+    console.log('drill', {i, codec, index, path})
+    ptr = codec.dereference(buffer, ptr, index)
+    codec = codec.reflect(index)
+  }
+  return codec.decode(buffer, ptr)
+}
+
+tape('decode nested field', function (t) {
+
+  var embed_codec = ipd.ObjectCodec([
+    ipd.Field('hello', 0, ipd.codex.u32, ipd.codex.string_u32),
+    ipd.Field('goodbye', 4, ipd.codex.u32, ipd.codex.string_u32)
+  ])
+  var container_codec = ipd.ObjectCodec([
+    ipd.Field('number', 0, ipd.codex.u32),
+    ipd.Field('number2', 4, ipd.codex.u32),
+    ipd.Field('object', 8, ipd.codex.u32, embed_codec)
+  ])
+  var expected = [7, 13, ['hello world!!!', 'whatever']]
+  var size =  4 + 4 + 4 + 4+4 + 14 + 4+4 + 8
+  t.equal(container_codec.encodingLength(expected), size)
+
+  var b = Buffer.alloc(size)
+  console.log(b)
+  container_codec.encode(expected, b, 0)
+  t.equal(drill(b, 0, container_codec, [2, 1]), 'whatever')
+  t.end()
+})
