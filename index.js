@@ -132,9 +132,13 @@ function ObjectCodec(schema) {
   //foo.bar.baz[10] and do a fixed number of reads
   //and then decode the value (hopefully a primitive)
 
+  function get_field (index) {
+    return Number.isInteger(index) ? schema[index] : schema.find(v => v.name == index)
+  }
+
   function dereference (buffer, start, index) {
     var length = min
-    var field = schema[index]
+    var field = get_field(index)
     if(!field) throw new Error('cannot dereference invalid field:' + index)
     var position = field.position
 //    console.log('deref', start, position,
@@ -149,7 +153,7 @@ function ObjectCodec(schema) {
   }
 
   function reflect (index) {
-    var field = schema[index]
+    var field = get_field(index)
     if(!field) throw new Error('invalid field:'+index)
     console.log('reflect', index, field)
     return field.pointed ? field.pointed : field.direct
@@ -224,7 +228,7 @@ function ArrayCodec (length_c, direct_c, pointed_c=null) {
   //...and the length isn't addressable.
   //in this case, 
 
-  function reflect (index) {
+  function reflect (_) {
     return pointed_c ? pointed_c : direct_c
   }
 

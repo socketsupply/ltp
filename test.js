@@ -165,7 +165,7 @@ tape('dereference pointer to specific direct field', function (t) {
 function drill (buffer, ptr, codec, path) {
   for(var i = 0; i < path.length; i++) {
     var index = path[i]
-    console.log('drill', {i, codec, index, path})
+    //console.log('drill', {i, codec, index, path})
     ptr = codec.dereference(buffer, ptr, index)
     codec = codec.reflect(index)
   }
@@ -190,7 +190,7 @@ tape('decode nested field', function (t) {
   var b = Buffer.alloc(size)
   console.log(b)
   container_codec.encode(expected, b, 0)
-  t.equal(drill(b, 0, container_codec, [2, 1]), 'whatever')
+  t.equal(drill(b, 0, container_codec, ['object', 'goodbye']), 'whatever')
   t.end()
 })
 
