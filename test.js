@@ -192,3 +192,28 @@ tape('decode nested field', function (t) {
   t.equal(drill(b, 0, container_codec, [2, 1]), 'whatever')
   t.end()
 })
+
+tape('automatic length field', function (t) {
+  var length_codec = ipd.ObjectCodec([
+    ipd.LengthField('length', 0, ipd.codex.u8),
+    ipd.Field('hello', 1, ipd.codex.u32, ipd.codex.string_u32),
+    ipd.Field('goodbye', 5, ipd.codex.u32, ipd.codex.string_u32)
+  ])
+
+  var size = 1+ 4+4 +4+5 +4+7
+  var expected = [size, 'hello', 'goodbye']
+  t.equal(length_codec.encodingLength(expected), size)
+  var b = Buffer.alloc(size)
+  length_codec.encode(expected, b, 0)
+  console.log(b)
+  t.deepEqual(length_codec.decode(b, 0), expected)
+
+  //length field is automatic, encoding without length field will decode with it.
+  var b2 = Buffer.alloc(size)
+  var _expected = [, 'hello', 'goodbye']
+  length_codec.encode(_expected, b2, 0)
+  t.deepEqual(length_codec.decode(b2, 0), expected)
+
+
+  t.end()
+})

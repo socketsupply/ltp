@@ -6,6 +6,13 @@ function Field (name, position, direct, pointed) {
   }
 }
 
+function LengthField (name, position, direct) {
+  if(position !== 0) throw new Error('length position must be zero')
+  return {
+    name, position: 0, direct, isLength: true
+  }
+}
+
 
 //because the schema could use padding, find the max position + size of that field.
 //because of things like bit packed booleans that might overlap with larger numbers
@@ -77,9 +84,18 @@ function ObjectCodec(schema) {
     if(isNaN(free)) throw new Error('min size was nan')
     for(var i = 0; i < args.length; i++) {
       var field = schema[i]
-      free += encodeField(field.position, field.direct, field.pointed, args[i], buffer, start, free)
-      if(isNaN(free)) throw new Error('free was nan after field:'+i)
+      if(!field.isLength) {
+        free += encodeField(field.position, field.direct, field.pointed, args[i], buffer, start, free)
+        if(isNaN(free)) throw new Error('free was nan after field:'+i)
+      }
     }
+
+    //the length field must be first
+    if(schema[0].isLength) {
+      var field = schema[0]
+      encodeField(field.position, field.direct, null, free, buffer, start)
+    }
+    
     //if this was encoded as a pointed field
     //we need to know how far the free pointer has moved.
     //hmm, encodeField returns only the pointed bytes used
@@ -241,5 +257,5 @@ function createDecodePath(schema, path) {
 //also, then you know where the array ends, so the element count in the array.
 
 module.exports = {
-  Field, codex, ObjectCodec, getMinimumSize, LengthDelimited: codex.LengthDelimited, ArrayCodec
+  Field, LengthField, codex, ObjectCodec, getMinimumSize, LengthDelimited: codex.LengthDelimited, ArrayCodec
 }
