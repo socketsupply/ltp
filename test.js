@@ -321,19 +321,23 @@ tape('handle invalid fields out of bounds', function (t) {
   console.log(b) // [length, relp, length, 'h' 'i']
   t.deepEqual(codec.decode(b, 0), {length: 5, hello: 'hi'})
 
+  var string_length = {message: /string length out of bounds/}
+  var relative_pointer  = {message: /relative pointer out of bounds/}
+  var length_field = {message: /length field out of bounds/}
+
   var b2 = Buffer.from(b); b2[2] = 3
-  t.throws(()=> codec.decode(b2, 0, 5)) //because incorrect length of hello
+  t.throws(()=> codec.decode(b2, 0, 5), string_length) //because incorrect length of hello
   var b3 = Buffer.from(b); b3[1] = 4
-  t.throws(()=> codec.decode(b3, 0, 5)) //because relative pointer points outside of end
+  t.throws(()=> codec.decode(b3, 0, 5), relative_pointer) //because relative pointer points outside of end
   var b4 = Buffer.from(b); b4[0] = 6
-  t.throws(()=> codec.decode(b4, 0, 5)) //because length field is greater outside of end (smaller would be okay)
+  t.throws(()=> codec.decode(b4, 0, 5), length_field) //because length field is greater outside of end (smaller would be okay)
 
   //because there is a defined length field,
   //ObjectCodec#decode will read that and pass to all methods underneath
   //so the first two invalid buffers should also fail without passing an explicit end.
 
-  t.throws(()=> codec.decode(b2, 0)) //because incorrect length of hello
-  t.throws(()=> codec.decode(b3, 0)) //because relative pointer points outside of end
+  t.throws(()=> codec.decode(b2, 0), string_length) //because incorrect length of hello
+  t.throws(()=> codec.decode(b3, 0), relative_pointer) //because relative pointer points outside of end
 
   t.end()
 })
