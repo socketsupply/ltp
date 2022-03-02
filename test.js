@@ -285,3 +285,22 @@ tape('nullable fields, drill', function (t) {
   t.equal(decode_object_goodbye(b, 0), null)
   t.end()
 })
+
+tape('invalid schema', function (t) {
+  var invalid_schema = [
+    ipd.Field('number', 0, ipd.codex.u32),
+    ipd.Field('number2', 1, ipd.codex.u16),
+  ]
+  var valid_schema = [
+    ipd.Field('number', 0, ipd.codex.u32),
+    ipd.Field('number2', 6, ipd.codex.u16),
+  ]
+
+  t.equal(ipd.isNonOverlapping(invalid_schema), false)
+  t.equal(ipd.isNonOverlapping(valid_schema), true)
+
+//  t.throws(()=>
+    ipd.ObjectCodec(invalid_schema)
+ // )
+  t.end()
+})

@@ -10,8 +10,31 @@ function assertFixedSize(codec) {
   return codec
 }
 
+
+function isNonOverlapping (schema, assert=false) {
+  for(var i = 0; i < schema.length; i++) {
+    for(var j = i+1; j < schema.length; j++) {
+      var fa = schema[i]
+      var fb = schema[j]
+      //check for overlap
+      if(fa.position < fb.position + fb.direct.bytes && fa.position + fa.direct.bytes > fb.position) {
+        if(assert) throw new Error('fields:'+fa.name +' & '+fb.name+' are overlapping')
+        return false
+      }
+    }
+  }
+  return true
+}
+
+function assertNonOverlapping (schema) {
+  isNonOverlapping(schema, true)
+}
+
+
 function Field (name, position, direct, pointed, isNullable=true) {
   assertFixedSize(direct)
+  if(!(position >= 0)) throw new Error('position must be >= 0, was:'+position)
+  if(!Number.isInteger(position)) throw new Error('position must be integer, was:'+position)
   return {
     name, position, direct, pointed, isNullable
   }
@@ -96,8 +119,8 @@ function decodeField (position, direct, pointed, buffer, start) {
 }
 
 function ObjectCodec(schema) {
+  assertNonOverlapping(schema)
   var min = getMinimumSize(schema)
-
   function encode (obj, buffer, start, end) {
     var free = min
     if(isNaN(free)) throw new Error('min size was nan')
@@ -274,14 +297,12 @@ function drill (codec, path) {
       ptr = codex[i].dereference(buffer, ptr, index)
       //check for null pointers.
       if(ptr === -1) return null
-
     }
     return codec.decode(buffer, ptr)
   }
 }
 
-
 module.exports = {
-  isFixedSize, assertFixedSize, drill,
+  isNonOverlapping, isFixedSize, assertFixedSize, drill,
   Field, LengthField, codex, ObjectCodec, getMinimumSize, LengthDelimited: codex.LengthDelimited, ArrayCodec
 }
