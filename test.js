@@ -299,8 +299,8 @@ tape('invalid schema', function (t) {
   t.equal(ipd.isNonOverlapping(invalid_schema), false)
   t.equal(ipd.isNonOverlapping(valid_schema), true)
 
-//  t.throws(()=>
+  t.throws(()=>
     ipd.ObjectCodec(invalid_schema)
- // )
+  )
   t.end()
 })
