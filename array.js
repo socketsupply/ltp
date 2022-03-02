@@ -20,14 +20,16 @@ function ArrayCodec (length_c, direct_c, pointed_c=null) {
     encode.bytes = free
   }
 
-  function decode (buffer, start) {
+  function decode (buffer, start, end) {
     var length = length_c.decode(buffer, start)
     var array_start = length_c.bytes
     var items = length / direct_c.bytes
+    if(start + items >= end)
+      throw new Error('array length out of bounds')
     var a = new Array(items)
     for(var i = 0; i < items; i++) {
       var position = array_start + i*direct_c.bytes
-      var value = decodeField(position, direct_c, pointed_c, buffer, start)
+      var value = decodeField(position, direct_c, pointed_c, buffer, start, end)
       if(value != null)
         a[i] = value
     }

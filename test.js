@@ -304,3 +304,94 @@ tape('invalid schema', function (t) {
   )
   t.end()
 })
+
+//it's far more important that decode safely handles invalid input than encode.
+//since we are dealing with direct memory access and lengths
+//it's possible to have a buffer overflow,
+//as appeared in same famous security vulnerabilities in recent years
+
+tape('handle invalid fields out of bounds', function (t) {
+  var codec = ipd.ObjectCodec([
+    ipd.LengthField('length', 0, ipd.codex.u8),
+    ipd.Field('hello', 1, ipd.codex.u8, ipd.codex.string_u8)
+  ])
+  var size = codec.encodingLength({hello: 'hi'})
+  var b = Buffer.alloc(size)
+  codec.encode({hello: 'hi'}, b, 0)
+  console.log(b) // [length, relp, length, 'h' 'i']
+  t.deepEqual(codec.decode(b, 0), {length: 5, hello: 'hi'})
+
+  var b2 = Buffer.from(b); b2[2] = 3
+  t.throws(()=> codec.decode(b2, 0, 5)) //because incorrect length of hello
+  var b3 = Buffer.from(b); b3[1] = 4
+  t.throws(()=> codec.decode(b3, 0, 5)) //because relative pointer points outside of end
+  var b4 = Buffer.from(b); b4[0] = 6
+  t.throws(()=> codec.decode(b4, 0, 5)) //because length field is greater outside of end (smaller would be okay)
+
+  //because there is a defined length field,
+  //ObjectCodec#decode will read that and pass to all methods underneath
+  //so the first two invalid buffers should also fail without passing an explicit end.
+
+  t.throws(()=> codec.decode(b2, 0)) //because incorrect length of hello
+  t.throws(()=> codec.decode(b3, 0)) //because relative pointer points outside of end
+
+  t.end()
+})
+
+function createAssertErr(t) {
+  return function (rx) { return {message: rx} } 
+}
+
+tape('handle invalid fields out of bounds, array', function (t) {
+  var codec = ipd.ArrayCodec(ipd.codex.u8, ipd.codex.u8, ipd.codex.string_u8)
+  var input = ['hi', 'bye']
+  var size = codec.encodingLength(input)
+  var b = Buffer.alloc(size)
+  codec.encode(input, b, 0)
+  t.deepEqual(codec.decode(b, 0), input)
+  console.log(b) // [length, relp, length, 'h' 'i']
+
+  var string_length = {message: /string length out of bounds/}
+  var relative_pointer  = {message: /relative pointer out of bounds/}
+  var array_length  = {message: /array length out of bounds/}
+  var b2 = Buffer.from(b); b2[6] = 4
+  t.throws(()=> { codec.decode(b2, 0, 10) }, string_length) //incorrect length of 'bye'
+
+  var b3 = Buffer.from(b); b3[3] = 7
+  t.throws(()=> { codec.decode(b3, 0, 10) }, string_length) //incorrect length of 'hi'
+
+  //actually not invalid, because it still fits inside end.
+  //checking a particular field overflows into other fields
+  //but not outside the object is too complicated.
+  //however, since it's still inside the attacker controlled data
+  //it's not dangerous compared to reading arbitary memory
+  var b4 = Buffer.from(b); b4[3] = 6
+  console.log(codec.decode(b4, 0, 10))
+
+  var b5 = Buffer.from(b); b5[2] = 8
+  t.throws(()=> codec.decode(b5, 0, 10), relative_pointer) //incorrect rel pointer
+  var b6 = Buffer.from(b); b6[1] = 9
+  t.throws(()=> codec.decode(b6, 0, 10) , relative_pointer) //incorrect rel pointer
+  console.log('array length out of bounds')
+  var b7 = Buffer.from(b); b7[0] = 10
+  t.throws(()=>
+    codec.decode(b7, 0, 10), array_length
+  ) //incorrect rel pointer
+
+  /*
+  var b4 = Buffer.from(b); b4[0] = 6
+  t.throws(()=> codec.decode(b4, 0, 5)) //because length field is greater outside of end (smaller would be okay)
+
+  //because there is a defined length field,
+  //ObjectCodec#decode will read that and pass to all methods underneath
+  //so the first two invalid buffers should also fail without passing an explicit end.
+
+  t.throws(()=> codec.decode(b2, 0)) //because incorrect length of hello
+  t.throws(()=> codec.decode(b3, 0)) //because relative pointer points outside of end
+  */
+  t.end()
+})
+
+
+
+//tape('encode field that's too large to be expressed by length type')

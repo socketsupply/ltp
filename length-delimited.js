@@ -13,8 +13,9 @@ function LengthDelimited (id, length_codec, value_codec) {
       value_codec.encode(value, buffer, start+bytes)
       return ld.encode.bytes = bytes + value_codec.encode.bytes
     },
-    decode: (buffer, start) => {
+    decode: (buffer, start, end) => {
       var length = length_codec.decode(buffer, start)
+      if(start + length >= end) throw new Error('string length out of bounds')
       var bytes = length_codec.bytes || length_codec.decode.bytes
       var value = value_codec.decode(buffer, start+bytes, start+bytes+length)
       ld.decode.bytes = bytes + value_codec.decode.bytes

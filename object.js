@@ -29,13 +29,35 @@ function ObjectCodec(schema) {
     encode.bytes = free
   }
 
-  function decode (buffer, start, end) {
+  function decode (buffer, start, end=buffer.length) {
+    end = Math.min(end, buffer.length)
     var a = {} //new Array(schema.length)
     for(var i = 0; i < schema.length; i++) {
       var field = schema[i]
-      a[field.name] = decodeField(field.position, field.direct, field.pointed, buffer, start)
+      a[field.name] = decodeField(field.position, field.direct, field.pointed, buffer, start, end)
+
+      //remember the bytes, if length is included
+      if(i === 0 && field.isLength) {
+        decode.bytes = a[field.name]
+        var _end = start + decode.bytes
+        if(_end > end) throw new Error('length field out of bounds')
+        //but a smaller value for end is acceptable.
+        end = _end
+      }
     }
+
+    if(schema[0].isLength) {
+      var field = schema[0]
+      //var length = decodeField(field.position, field.direct, null, free, buffer, start)
+      decode.bytes = a[schema[0].name]
+    }
+    //    else
     //decode.bytes = ??? 
+
+    //calculating the total bytes decoded is a bit tricky because it's actually possible,
+    //with relative pointers, that the bytes are not contigious.
+    //for example, it's possible that nested objects share references to poinded values.
+    //in cases where you actually need this, a length field should be included.
     return a
   }
 

@@ -106,15 +106,21 @@ function encodeField(position, direct, pointed, value, buffer, start, free) {
     throw new Error('invalid field, must be direct or pointed & direct')
 }
 
-function decodeField (position, direct, pointed, buffer, start) {
+function decodeField (position, direct, pointed, buffer, start, end=buffer.length) {
   if(!direct)
     throw new Error('field must have direct codec')
+
+//  console.log('out of bounds?', start, position, direct.bytes, end)
+  if(start + position + direct.bytes > end)
+    throw new Error('direct value out of bounds')
 
   if(!pointed)
     return direct.decode(buffer, start + position)
   else if (pointed) {
     var rel = direct.decode(buffer, start + position)
-    return rel === 0 ? null : pointed.decode(buffer, start + position + rel)
+    if(start + position + rel >= end)
+      throw new Error('relative pointer out of bounds')
+    return rel === 0 ? null : pointed.decode(buffer, start + position + rel, end)
   }
 }
 
