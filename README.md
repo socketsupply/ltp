@@ -22,58 +22,51 @@ So if the first field is a 32 bit integer, then that's the first 4 bytes.
 Strings, buffers, and embedded objects (if they contain a variable sized object)
 are variable sized.
 
-Variable sized fields are encoded with a relative pointer in the fixed size
+An object with only fixed size fields are simple.
+
+with the schema
+```
+{
+  count i32
+  b u8
+  foo boolean
+}
+```
+and values (`{count: 123, b: 64, foo: true}`)
+```
+7b 00 00 00 //4 bytes, little endian
+40          // a single byte 0x40=64
+01          // a single bit for the boolean
+```
+
+this object always takes 6 bytes no matter what it's field values are.
+
+On the other hand, variable sized fields are encoded with a relative pointer in the fixed size
 section - like primitive values, this is always in the same position.
+
+using the schema
+
+```
+{
+  count i32 //32 bit integer
+  name string_u32 //string up to max u32 length
+}
+```
 
 ```
 00 00 00 00 //32 byte integer
-04 00 00 00 --, //pointer to subsequent string
----           | //end of fixed section
-05 00 00 00 <-` //length of a string
+04 00 00 00 // --, pointer to subsequent string
+---         //   | (end of fixed section)
+05 00 00 00 // <-` length of a string
 68 65 6c 6c 6f
 ```
 
 The value of the relative pointer is the number of bytes from the pointer's position
 to where the data value is. This is always after the fixed size values.
-The advantage of a relative pointer is that the relative pointer has the same meaning
-in different positions. an encoded object with relative pointers can be embedded inside
-another and the pointers remain valid.
-
-
-## example
-
-suppose we are defining a simple object with 3 fields, count, name, time.
-
-```
-{
-  i32 count
-  string name
-  double time
-}
-```
-
-we could encode into a buffer like this:
-```
-object_codec.encode({count, 27, name:"hello", time:ts}, buffer, 0)
-```
-
-here are the bytes we would get (formatted and commented for clarity)
-(note, numbers in [little endian](https://en.wikipedia.org/wiki/Endianness) seem strange at first,
-but have better hardware support and you'll get used to them quickly)
-````
-1b 00 00 00             //count: 27 in little endian
-0c 00 00 00             //name: string starts 12 bytes after this position (0x0c)
-01 12 ab 32 03 23 57 86 //time: double
-05 00 00 00             //name.length is 5 bytes
-68 65 6c 6c 6f          //ascii bytes of "hello"
-```
-
-reading the primitive values is just a single memory read.
-reading the variable values is a read of the pointer, adding the value to the pointer's address,
-then reading the length, then you know where the string starts and ends. The string can be copied
-from memory, or used directly, if you are careful about the lifetimes of the string and the memory buffer
-that the object is encoded into.
-
+The advantage of a relative pointer like this is that it always has the same meaning
+in different positions. An encoded object with relative pointers can be embedded inside
+another and the pointers remain valid, this is very handy when transmitting objects
+over the network, or embedding objects inside of other objects.
 
 ## schema data structure
 
@@ -108,6 +101,12 @@ the length used will be calculated and written to this position,
 including the length used to write any pointed values.
 If the input has a length value, it is ignored. When decoding an object,
 the length read is returned in the name field.
+
+#### FixedPositionVariableField (name, position, value_codec)
+
+If you care about using space as efficiently as possible,
+then you can save the space needed for the pointer as long as there is only one varible size field
+and it's the last field. FixedPositionVariableSizeField cannot be nullable (but can encode an empty string)
 
 ### DirectArrayCodec (length_codec, value_codec)
 
