@@ -451,6 +451,12 @@ tape('fixed position variable sized field', function (t) {
   codec.encode(expected, b, 0)
   t.deepEqual(codec.decode(b, 0), expected)
   console.log(b)
+
+  var b = Buffer.alloc(1+1+0)
+  var expected = {foo: 10, bar: ''}
+  codec.encode(expected, b, 0)
+  t.deepEqual(codec.decode(b, 0), expected)
+
   t.end()
 })
 
