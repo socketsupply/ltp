@@ -397,5 +397,45 @@ tape('handle invalid fields out of bounds, array', function (t) {
 })
 
 
+tape('encode field that\'s too large to be expressed by length type', function (t) {
+    var codec = ipd.ObjectCodec([
+    ipd.LengthField('length', 0, ipd.codex.u8),
+    ipd.Field('hello', 1, ipd.codex.u8, ipd.codex.string_u8)
+  ])
+  var l = 256
+  var xs = Buffer.alloc(l).fill('x').toString()
+  console.log(xs)
+  t.equal(codec.encodingLength({hello: xs}), l+3)
+  var b = Buffer.alloc(l+3)
+  //fails because the string length is out of bounds
+  t.throws(()=> {codec.encode({hello:xs}, b, 0)}, {message: 'u8 value out of bounds'})
 
-//tape('encode field that's too large to be expressed by length type')
+  var l = 256-3
+  var xs = Buffer.alloc(l).fill('x').toString()
+  console.log(xs)
+  t.equal(codec.encodingLength({hello: xs}), l+3)
+  var b = Buffer.alloc(l+3)
+  //fails because the object length is out of bounds
+  t.throws(()=> {
+    codec.encode({hello:xs}, b, 0)
+  }, {message: 'u8 value out of bounds'})
+  console.log(b)
+  t.end()
+})
+
+tape('u{8,16,32,64} out of bounds checks', function (t) {
+  var b = Buffer.alloc(8)
+  t.throws(()=>ipd.codex.u8.encode(0x100, b, 0))
+  t.throws(()=>ipd.codex.u16.encode(0x1_0000, b, 0))
+  t.throws(()=>ipd.codex.u32.encode(0x1_0000_0000, b, 0))
+  t.throws(()=>ipd.codex.u64.encode(0x1_0000_0000_0000_0000n, b, 0))
+
+  t.throws(()=>ipd.codex.u8.encode(-1, b, 0))
+  t.throws(()=>ipd.codex.u16.encode(-1, b, 0))
+  t.throws(()=>ipd.codex.u32.encode(-1, b, 0))
+  //u64 accepts numbers or big int
+  t.throws(()=>ipd.codex.u64.encode(-1, b, 0))
+  t.throws(()=>ipd.codex.u64.encode(-1n, b, 0))
+  t.end()
+
+})
