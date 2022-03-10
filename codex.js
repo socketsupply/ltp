@@ -45,7 +45,6 @@ var codex = {
 var string = {
   encode: (value, buffer, start) => {
     var bytes = Buffer.byteLength(value)
-    console.log(value, buffer, start, bytes)
     buffer.write(value, start, start+bytes)
     string.encode.bytes = bytes
   },
