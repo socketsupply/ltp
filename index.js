@@ -17,7 +17,7 @@ function PointedArrayCodec(length_codec, direct_codec, pointed_codec, isNullable
 }
 
 function FixedPositionVariableSizeField (name, position, value_codec) {
-  return Field(name, position, Constant(0), value_codec, false, true)
+  return Field(name, position, null, value_codec, false, true)
 }
 
 module.exports = {

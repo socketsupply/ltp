@@ -444,7 +444,6 @@ tape('fixed position variable sized field', function (t) {
   var codec = ipd.ObjectCodec([
     ipd.Field('foo', 0, ipd.codex.u8),
     ipd.FixedPositionVariableSizeField('bar', 1, ipd.codex.string_u8)
-//    ipd.Field('bar', 1, Constant(0), ipd.codex.string_u8, false)
   ])
   var b = Buffer.alloc(1+1+3)
   var expected = {foo: 10, bar: 'baz'}
@@ -461,15 +460,11 @@ tape('fixed position variable sized field', function (t) {
 })
 
 tape('fixed position variable sized field must fail if not in last position', function (t) {
-  var codec = ipd.ObjectCodec([
+  t.throws(()=> {ipd.ObjectCodec([
     ipd.Field('foo', 1, ipd.codex.u8),
     ipd.FixedPositionVariableSizeField('bar', 0, ipd.codex.string_u8)
 //    ipd.Field('bar', 1, Constant(0), ipd.codex.string_u8, false)
   ])
-  var b = Buffer.alloc(1+1+3)
-  t.throws(()=>{
-    codec.encode({foo: 10, bar: 'baz'}, b, 0)
   })
-  console.log(b)
   t.end()
 })
