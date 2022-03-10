@@ -34,7 +34,7 @@ function ObjectCodec(schema) {
     var a = {} //new Array(schema.length)
     for(var i = 0; i < schema.length; i++) {
       var field = schema[i]
-      a[field.name] = decodeField(field.position, field.direct, field.pointed, buffer, start, end)
+      a[field.name] = decodeField(field.position, field.direct, field.pointed, buffer, start, end, field.allow_zero)
 
       //remember the bytes, if length is included
       if(i === 0 && field.isLength) {

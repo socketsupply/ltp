@@ -1,7 +1,8 @@
 var codex = require('./codex')
 var {drill,
   isFixedSize, 
-  Field, LengthField, isNonOverlapping, assertFixedSize, getMinimumSize 
+  Field, LengthField, isNonOverlapping, assertFixedSize, getMinimumSize,
+  Constant
 } = require('./utils')
 var ObjectCodec = require('./object')
 var ArrayCodec = require('./array')
@@ -15,10 +16,15 @@ function PointedArrayCodec(length_codec, direct_codec, pointed_codec, isNullable
   return ArrayCodec(length_codec, direct_codec, pointed_codec, isNullable)
 }
 
+function FixedPositionVariableSizeField (name, position, value_codec) {
+  return Field(name, position, Constant(0), value_codec, false, true)
+}
+
 module.exports = {
   isNonOverlapping, isFixedSize, assertFixedSize, drill,
   Field, LengthField, codex, ObjectCodec, getMinimumSize, LengthDelimited: codex.LengthDelimited,
   DirectArrayCodec,
   PointedArrayCodec,
+  FixedPositionVariableSizeField,
   ArrayCodec
 }

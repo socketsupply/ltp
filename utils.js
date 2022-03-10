@@ -10,6 +10,17 @@ function assertFixedSize(codec) {
   return codec
 }
 
+//create a codec that is always the same (and uses zero bytes)
+function Constant(v) {
+  function encode (_v) { if(_v != v) throw new Error('expected constant value:'+v+', got:'+_v)}
+  function decode () { return v }
+  encode.bytes = decode.bytes = 0
+  return {
+    bytes: 0, encode, decode,
+    encodingLength: ()=>0
+  }
+}
+
 
 function isNonOverlapping (schema, assert=false) {
   for(var i = 0; i < schema.length; i++) {
@@ -35,12 +46,12 @@ function PointedField (name, position, direct, pointed, isNullable=true) {
   return Field(name, position, direct, pointed, isNullable)
 }
 
-function Field (name, position, direct, pointed, isNullable=true) {
+function Field (name, position, direct, pointed, isNullable=true, allow_zero) {
   assertFixedSize(direct)
   if(!(position >= 0)) throw new Error('position must be >= 0, was:'+position)
   if(!Number.isInteger(position)) throw new Error('position must be integer, was:'+position)
   return {
-    name, position, direct, pointed, isNullable
+    name, position, direct, pointed, isNullable, allow_zero: allow_zero
   }
 }
 
@@ -100,6 +111,7 @@ function encodeField(position, direct, pointed, value, buffer, start, free) {
   }
   else if(pointed && direct) {
     ///XXX should it be (start + free)?
+    console.log({position, pointed, direct, value, free, start})
     if(value != null) {
       direct.encode(free - position, buffer, start + position)
       pointed.encode(value, buffer, start+free)
@@ -114,7 +126,7 @@ function encodeField(position, direct, pointed, value, buffer, start, free) {
     throw new Error('invalid field, must be direct or pointed & direct')
 }
 
-function decodeField (position, direct, pointed, buffer, start, end=buffer.length) {
+function decodeField (position, direct, pointed, buffer, start, end=buffer.length, allow_zero=false) {
   if(!direct)
     throw new Error('field must have direct codec')
 
@@ -128,7 +140,7 @@ function decodeField (position, direct, pointed, buffer, start, end=buffer.lengt
     var rel = direct.decode(buffer, start + position)
     if(start + position + rel >= end)
       throw new Error('relative pointer out of bounds')
-    return rel === 0 ? null : pointed.decode(buffer, start + position + rel, end)
+    return rel === 0 && !allow_zero ? null : pointed.decode(buffer, start + position + rel, end)
   }
 }
 
@@ -155,5 +167,6 @@ function drill (codec, path) {
 
 module.exports = {
   isNonOverlapping, assertNonOverlapping, isFixedSize, assertFixedSize, drill,
-  assertFixedSize, encodeField, decodeField, getMinimumSize, Field, DirectField, PointedField, LengthField
+  assertFixedSize, encodeField, decodeField, getMinimumSize, Field, DirectField, PointedField, LengthField,
+  Constant
 }
