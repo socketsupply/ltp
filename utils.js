@@ -31,6 +31,10 @@ function assertNonOverlapping (schema) {
 }
 
 
+function PointedField (name, position, direct, pointed, isNullable=true) {
+  return Field(name, position, direct, pointed, isNullable)
+}
+
 function Field (name, position, direct, pointed, isNullable=true) {
   assertFixedSize(direct)
   if(!(position >= 0)) throw new Error('position must be >= 0, was:'+position)
@@ -38,6 +42,10 @@ function Field (name, position, direct, pointed, isNullable=true) {
   return {
     name, position, direct, pointed, isNullable
   }
+}
+
+function DirectField (name, position, direct) {
+  return Field(name, position, direct, null, false)
 }
 
 function LengthField (name, position, direct) {
@@ -147,5 +155,5 @@ function drill (codec, path) {
 
 module.exports = {
   isNonOverlapping, assertNonOverlapping, isFixedSize, assertFixedSize, drill,
-  assertFixedSize, encodeField, decodeField, getMinimumSize, Field, LengthField
+  assertFixedSize, encodeField, decodeField, getMinimumSize, Field, DirectField, PointedField, LengthField
 }

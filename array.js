@@ -1,6 +1,6 @@
 var {getMinimumSize, assertNonOverlapping, encodeField, decodeField} = require('./utils')
 
-function ArrayCodec (length_c, direct_c, pointed_c=null) {
+function ArrayCodec (length_c, direct_c, pointed_c=null, isNullable=(pointed_c != null)) {
   //the minimum size is the length used to encode 0
   var empty_size = length_c.bytes
   //note. pointed_codec is optional.
