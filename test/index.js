@@ -1,6 +1,6 @@
 var tape = require('tape')
-var ipd = require('./index')
-var LengthDelimited = require('./length-delimited')
+var ipd = require('../')
+var LengthDelimited = require('../length-delimited')
 
 tape('encode decode a single byte', function (t) {
   var byte_field = ipd.Field('byte', 0, ipd.codex.u8) 
