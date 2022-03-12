@@ -78,6 +78,13 @@ byte* decode_relp(byte* buf, int relp_value) {
   return (byte*)(buf+relp_value);
 }
 
+byte* decode_array_index__u8(byte* buf, int index) {
+  int length = decode__u8(buf);
+  if(length - sizeof(u8) < index*sizeof(u8)) //out of bounds
+    return 0;
+  return decode_relp__u8((byte*)(buf+sizeof(u8)+index));
+}
+
 //for each is just a loop so using break/return inside gives you find
 #define for_each(aryp, v, decode_value, end, each) { \
   byte* end = (byte*)(ary_p + decode__u32(ary_p, end)) \
