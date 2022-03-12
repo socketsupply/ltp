@@ -12,8 +12,6 @@ tape('init', function (t) {
   WebAssembly.instantiate(src, {
 
   }).then(function (module) {
-    console.log(module.instance.exports)
-
     memory = Buffer.from(module.instance.exports.memory.buffer)
     start = module.instance.exports.__heap_base.value
     wasm = module.instance.exports
@@ -30,9 +28,12 @@ var O = ipd.ObjectCodec([
 
 var expected = {foo: 1, bar: 1234, name: 'Hello, World!', list: ['foo', 'bar', 'baz']} 
 
+var baz
 tape('read raw data', function (t) {
 
-  O.encode(expected, memory, start)
+  var length = O.encode(expected, memory, start)
+  baz = start+O.encode.bytes
+  ipd.codex.string_u8.encode('baz', memory, baz)
   console.log(memory.slice(start, start+30))
 
 
@@ -65,12 +66,33 @@ tape('read via generated apis', function (t) {
 
 //  console.log('list.length', wasm.decode__u8(list))
 
+  console.log("TABLE", wasm.__indirect_function_table)
+  var table = wasm.__indirect_function_table
+  console.log('table.length', table.length)
+// tried to pass in a js function to callback but it doesn't seem to work like that.
+//  table.grow(1)
+//  table.set(0, function (a, b) { return a === b })
   t.equal(wasm.decode_array_length__u8(list), expected.list.length)
 
   for(var i = 0; i < expected.list.length; i++) {
     console.log('list['+i+']='+wasm.decode_array_index__u8(list, i))
     t.equal(decode_string(wasm.decode_array_index__u8(list, i)), expected.list[i])
   }
+
+  console.log([
+    wasm.decode_array_index__u8(list, 0),
+    wasm.decode_array_index__u8(list, 1),
+    wasm.decode_array_index__u8(list, 2)
+  ])
+
+  //can look up indexes of matching strings
+  for(var i = 0; i < expected.list.length; i++) {
+    var last = wasm.decode_array_index__u8(list, i)
+    t.equal(wasm.array_index_of__string_u8(list, last), i)
+  }
+
+    t.equal(wasm.array_index_of__string_u8(list, baz), 2)
+
 //  t.equal(decode_string(), expected.name, expected name)
   t.end()
 })
