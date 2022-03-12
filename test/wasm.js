@@ -65,6 +65,8 @@ tape('read via generated apis', function (t) {
 
 //  console.log('list.length', wasm.decode__u8(list))
 
+  t.equal(wasm.decode_array_length__u8(list), expected.list.length)
+
   for(var i = 0; i < expected.list.length; i++) {
     console.log('list['+i+']='+wasm.decode_array_index__u8(list, i))
     t.equal(decode_string(wasm.decode_array_index__u8(list, i)), expected.list[i])

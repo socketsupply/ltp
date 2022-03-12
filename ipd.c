@@ -78,6 +78,10 @@ byte* decode_relp(byte* buf, int relp_value) {
   return (byte*)(buf+relp_value);
 }
 
+int decode_array_length__u8(byte* buf) {
+  return decode__u8(buf) / sizeof(u8);
+}
+
 byte* decode_array_index__u8(byte* buf, int index) {
   int length = decode__u8(buf);
   if(length - sizeof(u8) < index*sizeof(u8)) //out of bounds
