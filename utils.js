@@ -1,7 +1,7 @@
 var codex = require('./codex')
 
 function isFixedSize(codec) {
-  return !isNaN(codec.bytes)
+  return 'number' === typeof codec.bytes && !isNaN(codec.bytes)
 }
 
 function assertFixedSize(codec) {
