@@ -2,6 +2,39 @@ var tape = require('tape')
 var ipd = require('../')
 var LengthDelimited = require('../length-delimited')
 
+var fixed = ipd.ObjectCodec([
+  ipd.Field('u8', 0, ipd.codex.u8),
+  ipd.Field('u16', 1, ipd.codex.u16),
+  ipd.Field('u32', 3, ipd.codex.u32)
+])
+
+var hi_bye = ipd.ObjectCodec([
+  ipd.Field('hello', 0, ipd.codex.u32, ipd.codex.string_u32),
+  ipd.Field('goodbye', 4, ipd.codex.u32, ipd.codex.string_u32)
+])
+
+var object_string = ipd.ObjectCodec([
+  ipd.Field('u8', 0, ipd.codex.u8),
+  ipd.Field('u16', 1, ipd.codex.u16),
+  ipd.Field('string', 3, ipd.codex.u32, ipd.codex.string_u32)
+])
+
+var embed = LengthDelimited(11, ipd.codex.u32, ipd.ObjectCodec([
+  ipd.Field('hello', 0, ipd.codex.u32, ipd.codex.string_u32),
+  ipd.Field('goodbye', 4, ipd.codex.u32, ipd.codex.string_u32)
+]))
+
+var container = ipd.ObjectCodec([
+  ipd.Field('number', 0, ipd.codex.u32),
+  ipd.Field('object', 4, ipd.codex.u32, embed)
+])
+
+var array_u32= ipd.ArrayCodec(ipd.codex.u32, ipd.codex.u32)
+var array_container = ipd.ObjectCodec([
+  ipd.Field('number', 0, ipd.codex.u32),
+  ipd.Field('array', 4, ipd.codex.u32, array_u32)
+])
+
 tape('encode decode a single byte', function (t) {
   var byte_field = ipd.Field('byte', 0, ipd.codex.u8) 
   var size = 1
@@ -17,42 +50,31 @@ tape('encode decode a single byte', function (t) {
 })
 
 tape('encode decode three values', function (t) {
-  var schema = [
-    ipd.Field('u8', 0, ipd.codex.u8),
-    ipd.Field('u16', 1, ipd.codex.u16),
-    ipd.Field('u32', 3, ipd.codex.u32)
-  ]
 
   var size = 7
-  t.equal(ipd.getMinimumSize(schema), size)
+  t.equal(fixed.bytes, size)
 
   var b = Buffer.alloc(size)
 
-  var object_c = ipd.ObjectCodec(schema)
   var expected = {u8: 123, u16:1_000, u32: 1_000_000}
-  object_c.encode(expected, b, 0)
-  t.deepEqual(object_c.decode(b, 0), expected)
+  fixed.encode(expected, b, 0)
+  t.deepEqual(fixed.decode(b, 0), expected)
   t.end()  
 })
 
 tape('encode/decode rel pointers', function (t) {
-  var schema = [
-    ipd.Field('hello', 0, ipd.codex.u32, ipd.codex.string_u32),
-    ipd.Field('goodbye', 4, ipd.codex.u32, ipd.codex.string_u32)
-  ]
 
   var expected = {hello: 'hello world!!!', goodbye: 'whatever'}
   var size = 4+4+14+4+4+8
-  t.equal(ipd.getMinimumSize(schema), 8)
+//  t.equal(ipd.getMinimumSize(schema), 8)
 
   var b = Buffer.alloc(size)
 
-  var object_c = ipd.ObjectCodec(schema)
-  object_c.encode(expected, b, 0)
-  t.equal(object_c.encodingLength(expected), size)
+  hi_bye.encode(expected, b, 0)
+  t.equal(hi_bye.encodingLength(expected), size)
 
   console.log(b)
-  t.deepEqual(object_c.decode(b, 0), expected)
+  t.deepEqual(hi_bye.decode(b, 0), expected)
   t.end()
 })
 
@@ -60,18 +82,14 @@ tape('encode/decode rel pointers', function (t) {
 //in this method, the 
 
 tape('object with length delimiter around it', function (t) {
-  var embed_codec = LengthDelimited(11, ipd.codex.u32, ipd.ObjectCodec([
-    ipd.Field('hello', 0, ipd.codex.u32, ipd.codex.string_u32),
-    ipd.Field('goodbye', 4, ipd.codex.u32, ipd.codex.string_u32)
-  ]))
   var expected = {hello: 'hello world!!!', goodbye: 'whatever'}
   var size =  4 + 4+4 + 14 + 4+4 + 8
-  t.equal(embed_codec.encodingLength(expected), size)
+  t.equal(embed.encodingLength(expected), size)
 
   var b = Buffer.alloc(size)
 
-  embed_codec.encode(expected, b, 0)
-  t.deepEqual(embed_codec.decode(b, 0), expected)
+  embed.encode(expected, b, 0)
+  t.deepEqual(embed.decode(b, 0), expected)
   console.log(b)
   //26 00 00 00      //38
   //08 00 00 00      // 8 (rp)
@@ -86,24 +104,16 @@ tape('object with length delimiter around it', function (t) {
 //encoding returns the bytes used, so pointed values are in the same space.
 
 tape('object embedded in another object', function (t) {
-  var embed_codec = LengthDelimited(11, ipd.codex.u32, ipd.ObjectCodec([
-    ipd.Field('hello', 0, ipd.codex.u32, ipd.codex.string_u32),
-    ipd.Field('goodbye', 4, ipd.codex.u32, ipd.codex.string_u32)
-  ]))
-  var container_codec = ipd.ObjectCodec([
-    ipd.Field('number', 0, ipd.codex.u32),
-    ipd.Field('object', 4, ipd.codex.u32, embed_codec)
-  ])
 
   var expected = {number: 7, object: {hello: 'hello world!!!', goodbye: 'whatever'}}
 
   var size =  4 + 4 + 4 + 4+4 + 14 + 4+4 + 8
-  t.equal(container_codec.encodingLength(expected), size)
+  t.equal(container.encodingLength(expected), size)
 
   var b = Buffer.alloc(size)
   console.log(b)
-  container_codec.encode(expected, b, 0)
-  t.deepEqual(container_codec.decode(b, 0), expected)
+  container.encode(expected, b, 0)
+  t.deepEqual(container.decode(b, 0), expected)
   console.log(b)
   //26 00 00 00      //38
   //08 00 00 00      // 8 (rp)
@@ -114,22 +124,17 @@ tape('object embedded in another object', function (t) {
 })
 
 tape('array inside object', function (t) {
-  var embed_codec = ipd.ArrayCodec(ipd.codex.u32, ipd.codex.u32)
-  var container_codec = ipd.ObjectCodec([
-    ipd.Field('number', 0, ipd.codex.u32),
-    ipd.Field('array', 4, ipd.codex.u32, embed_codec)
-  ])
   var expected = {number: 7, array: [1, 2, 3, 1_000, 2_000, 3_000]}
 
   var size =  4 + 4 + 4 + 4*6
-  t.equal(container_codec.encodingLength(expected), size)
+  t.equal(array_container.encodingLength(expected), size)
 
   var b = Buffer.alloc(size)
   console.log(b)
-  container_codec.encode(expected, b, 0)
-  t.deepEqual(container_codec.decode(b, 0), expected)
+  array_container.encode(expected, b, 0)
+  t.deepEqual(array_container.decode(b, 0), expected)
   console.log(b)
-  console.log(container_codec.decode(b, 0))
+  console.log(array_container.decode(b, 0))
   //26 00 00 00      //38
   //08 00 00 00      // 8 (rp)
   //16 00 00 00      //22 (rp)
@@ -140,24 +145,18 @@ tape('array inside object', function (t) {
 })
 
 tape('dereference pointer to specific direct field', function (t) {
-  var schema = [
-    ipd.Field('u8', 0, ipd.codex.u8),
-    ipd.Field('u16', 1, ipd.codex.u16),
-    ipd.Field('string', 3, ipd.codex.u32, ipd.codex.string_u32)
-  ]
+
   var expected = {u8:1, u16:1000, string: 'hello'}
-  var codec = ipd.ObjectCodec(schema)
   var b = Buffer.alloc(1+2+ 4+4+5)
-  codec.encode(expected, b, 0)
-  var p = codec.dereference(b, 0, 1)
+  object_string.encode(expected, b, 0)
+  var p = object_string.dereference(b, 0, 1)
   t.equal(ipd.codex.u16.decode(b, p), expected.u16)
-  var str_p = codec.dereference(b, 0, 2)
+  var str_p = object_string.dereference(b, 0, 2)
   t.equal(ipd.codex.string_u32.decode(b, str_p), expected.string)
   t.end()
 })
 
 tape('decode nested field', function (t) {
-
   var embed_codec = ipd.ObjectCodec([
     ipd.Field('hello', 0, ipd.codex.u32, ipd.codex.string_u32),
     ipd.Field('goodbye', 4, ipd.codex.u32, ipd.codex.string_u32)
@@ -167,6 +166,7 @@ tape('decode nested field', function (t) {
     ipd.Field('number2', 4, ipd.codex.u32),
     ipd.Field('object', 8, ipd.codex.u32, embed_codec)
   ])
+
   var expected = {number:7, number2:13, object: {hello:'hello world!!!', goodbye: 'whatever'}}
   var size =  4 + 4 + 4 + 4+4 + 14 + 4+4 + 8
   t.equal(container_codec.encodingLength(expected), size)
@@ -476,6 +476,18 @@ function encodeAll(codec, ary, b) {
   return start
 }
 
+function decodeAll(codec, _ary, b, count, t) {
+  var start = 0
+  for(var i = 0; i < count; i++) {
+    _ary[i] = codec.decode(b, start)
+    var _start = start
+    start += codec.decode.bytes
+    console.log(_start, codec.decode.bytes, start)
+    if(t) t.equal(codec.getNext(b, _start), start, 'expected getNext to match start+decode.bytes')
+  }
+  return start
+}
+
 tape('getNext, fixed size', function (t) {
   var schema = [
     ipd.Field('u8', 0, ipd.codex.u8),
@@ -500,12 +512,8 @@ tape('getNext, fixed size', function (t) {
 
   t.deepEqual(object_c.getNext(b, 0), size)
 
-  var start2 = 0, actual = []
-  for(var i = 0; i < expected.length; i++) {
-    actual[i] = object_c.decode(b, start2)
-    console.log(i, start2, actual[i], object_c.decode.bytes)
-    start2 += object_c.decode.bytes
-  }
+  var actual = []
+  var start2 = decodeAll(object_c, actual, b, 3, t)
   t.equal(start, start2)
   t.deepEqual(actual, expected)
   t.end()
@@ -532,11 +540,9 @@ tape('getNext, variable sized, length delimited', function (t) {
 
   var start = encodeAll(object_c, expected, b) 
 
-  var start2 = 0, actual = []
-  for(var i = 0; i < expected.length; i++) {
-    actual[i] = object_c.decode(b, start2)
-    start2 += object_c.decode.bytes
-  }
+  var actual = []
+  var start2 = decodeAll(object_c, actual, b, 3, t)
+  t.equal(start, start2)
   t.deepEqual(actual.map(({first, last, age}) => ({first, last, age})), expected)
   t.end()
 })
@@ -558,15 +564,10 @@ tape('getNext, single variable sized field', function (t) {
 
   var start = encodeAll(object_c, expected, b) 
 
-  var start2 = 0, actual = []
-  for(var i = 0; i < expected.length; i++) {
-    actual[i] = object_c.decode(b, start2)
-    t.ok(typeof object_c.decode.bytes, 'number')
-    t.equal(isNaN(object_c.decode.bytes), false, 'number is not NaN')
-    start2 += object_c.decode.bytes
-  }
-
-  t.deepEqual(actual.map(({name, age}) => ({name, age})), expected)
+  var actual = []
+  var start2 = decodeAll(object_c, actual, b, 3, t)
+  t.equal(start, start2)
+  t.deepEqual(actual, expected)
   t.equal(start, start2)
   t.end()
 })
