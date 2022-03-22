@@ -449,7 +449,6 @@ tape('fixed position variable sized field', function (t) {
   var expected = {foo: 10, bar: 'baz'}
   codec.encode(expected, b, 0)
   t.deepEqual(codec.decode(b, 0), expected)
-  console.log(b)
 
   var b = Buffer.alloc(1+1+0)
   var expected = {foo: 10, bar: ''}
@@ -464,7 +463,85 @@ tape('fixed position variable sized field must fail if not in last position', fu
     ipd.Field('foo', 1, ipd.codex.u8),
     ipd.FixedPositionVariableSizeField('bar', 0, ipd.codex.string_u8)
 //    ipd.Field('bar', 1, Constant(0), ipd.codex.string_u8, false)
-  ])
-  })
+  ])})
+  t.end()
+})
+
+tape('getNext, fixed size', function (t) {
+  var schema = [
+    ipd.Field('u8', 0, ipd.codex.u8),
+    ipd.Field('u16', 1, ipd.codex.u16),
+    ipd.Field('u32', 3, ipd.codex.u32)
+  ]
+
+  var size = 7
+  t.equal(ipd.getMinimumSize(schema), size)
+
+  var b = Buffer.alloc(size*3)
+
+  var object_c = ipd.ObjectCodec(schema)
+  var expected = [
+    {u8: 12, u16:1_000, u32: 1_000_000},
+    {u8: 34, u16:2_000, u32: 2_000_000},
+    {u8: 56, u16:3_000, u32: 3_000_000}
+  ]
+
+  var start = 0
+  object_c.encode(expected[0], b, 0)
+  object_c.encode(expected[1], b, start += object_c.encode.bytes)
+  object_c.encode(expected[2], b, start += object_c.encode.bytes)
+  t.equal(start, size*(expected.length-1))
+
+  t.deepEqual(object_c.getNext(b, 0), size)
+
+  var start2 = 0, actual = []
+  for(var i = 0; i < expected.length; i++) {
+    actual[i] = object_c.decode(b, start2)
+    console.log(i, start2, actual[i], object_c.decode.bytes)
+    start2 += object_c.decode.bytes
+  }
+  t.deepEqual(actual, expected)
+  t.end()
+})
+
+tape('getNext, fixed size', function (t) {
+  var schema = [
+    ipd.LengthField('length', 0, ipd.codex.u16),
+    ipd.Field('first', 2, ipd.codex.u16, ipd.codex.string_u8),
+    ipd.Field('last', 4, ipd.codex.u16, ipd.codex.string_u8),
+    ipd.Field('age', 6, ipd.codex.u16)
+  ]
+
+  t.equal(ipd.getMinimumSize(schema), 8)
+
+  var b = Buffer.alloc(1024)
+
+  var object_c = ipd.ObjectCodec(schema)
+  var expected = [
+    {first: 'alice', last: 'algorithm', age: 36},
+    {first: 'bob', last: 'binary', age: 64},
+    {first: 'carol', last: 'commutative', age: 12}
+  ]
+
+  var start = 0
+  object_c.encode(expected[0], b, 0)
+  t.equal(object_c.encode.bytes, 24)
+//  console.log(b)
+//  return
+  object_c.encode(expected[1], b, start += object_c.encode.bytes)
+  object_c.encode(expected[2], b, start += object_c.encode.bytes)
+  //t.equal(start, size*(expected.length-1))
+
+//  t.deepEqual(object_c.getNext(b, 0), size)
+
+  var start2 = 0, actual = []
+  for(var i = 0; i < expected.length; i++) {
+    console.log(start2, b.slice(start2, start2+32))
+    actual[i] = object_c.decode(b, start2)
+    console.log(i, start2, actual[i], object_c.decode.bytes)
+    start2 += object_c.decode.bytes
+  }
+  console.log(actual)
+  t.deepEqual(actual.map(({first, last, age}) => ({first, last, age})), expected)
   t.end()
 })
