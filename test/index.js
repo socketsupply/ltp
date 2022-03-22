@@ -467,6 +467,15 @@ tape('fixed position variable sized field must fail if not in last position', fu
   t.end()
 })
 
+function encodeAll(codec, ary, b) {
+  var start = 0
+  for(var i = 0; i < ary.length;i++) {
+    codec.encode(ary[i], b, start)
+    start += codec.encode.bytes
+  }
+  return start
+}
+
 tape('getNext, fixed size', function (t) {
   var schema = [
     ipd.Field('u8', 0, ipd.codex.u8),
@@ -486,11 +495,8 @@ tape('getNext, fixed size', function (t) {
     {u8: 56, u16:3_000, u32: 3_000_000}
   ]
 
-  var start = 0
-  object_c.encode(expected[0], b, 0)
-  object_c.encode(expected[1], b, start += object_c.encode.bytes)
-  object_c.encode(expected[2], b, start += object_c.encode.bytes)
-  t.equal(start, size*(expected.length-1))
+  var start = encodeAll(object_c, expected, b) 
+  t.equal(start, size*(expected.length))
 
   t.deepEqual(object_c.getNext(b, 0), size)
 
@@ -500,11 +506,12 @@ tape('getNext, fixed size', function (t) {
     console.log(i, start2, actual[i], object_c.decode.bytes)
     start2 += object_c.decode.bytes
   }
+  t.equal(start, start2)
   t.deepEqual(actual, expected)
   t.end()
 })
 
-tape('getNext, fixed size', function (t) {
+tape('getNext, variable sized, length delimited', function (t) {
   var schema = [
     ipd.LengthField('length', 0, ipd.codex.u16),
     ipd.Field('first', 2, ipd.codex.u16, ipd.codex.string_u8),
@@ -523,25 +530,43 @@ tape('getNext, fixed size', function (t) {
     {first: 'carol', last: 'commutative', age: 12}
   ]
 
-  var start = 0
-  object_c.encode(expected[0], b, 0)
-  t.equal(object_c.encode.bytes, 24)
-//  console.log(b)
-//  return
-  object_c.encode(expected[1], b, start += object_c.encode.bytes)
-  object_c.encode(expected[2], b, start += object_c.encode.bytes)
-  //t.equal(start, size*(expected.length-1))
-
-//  t.deepEqual(object_c.getNext(b, 0), size)
+  var start = encodeAll(object_c, expected, b) 
 
   var start2 = 0, actual = []
   for(var i = 0; i < expected.length; i++) {
-    console.log(start2, b.slice(start2, start2+32))
     actual[i] = object_c.decode(b, start2)
-    console.log(i, start2, actual[i], object_c.decode.bytes)
     start2 += object_c.decode.bytes
   }
-  console.log(actual)
   t.deepEqual(actual.map(({first, last, age}) => ({first, last, age})), expected)
+  t.end()
+})
+
+tape('getNext, single variable sized field', function (t) {
+  var schema = [
+    ipd.Field('age', 0, ipd.codex.u16),
+    ipd.FixedPositionVariableSizeField('name', 2, ipd.codex.string_u8),
+  ]
+
+  var b = Buffer.alloc(1024)
+
+  var object_c = ipd.ObjectCodec(schema)
+  var expected = [
+    {name: 'alice', age: 36},
+    {name: 'bob', age: 64},
+    {name: 'carol', age: 12}
+  ]
+
+  var start = encodeAll(object_c, expected, b) 
+
+  var start2 = 0, actual = []
+  for(var i = 0; i < expected.length; i++) {
+    actual[i] = object_c.decode(b, start2)
+    t.ok(typeof object_c.decode.bytes, 'number')
+    t.equal(isNaN(object_c.decode.bytes), false, 'number is not NaN')
+    start2 += object_c.decode.bytes
+  }
+
+  t.deepEqual(actual.map(({name, age}) => ({name, age})), expected)
+  t.equal(start, start2)
   t.end()
 })
