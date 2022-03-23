@@ -483,7 +483,7 @@ function decodeAll(codec, _ary, b, count, t) {
     var _start = start
     start += codec.decode.bytes
     console.log(_start, codec.decode.bytes, start)
-    if(t) t.equal(codec.getNext(b, _start), start, 'expected getNext to match start+decode.bytes')
+    if(t) t.equal(_start + codec.encodedLength(b, _start), start, 'expected getNext to match start+decode.bytes')
   }
   return start
 }
@@ -510,7 +510,7 @@ tape('getNext, fixed size', function (t) {
   var start = encodeAll(object_c, expected, b) 
   t.equal(start, size*(expected.length))
 
-  t.deepEqual(object_c.getNext(b, 0), size)
+  t.deepEqual(0 + object_c.encodedLength(b, 0), size)
 
   var actual = []
   var start2 = decodeAll(object_c, actual, b, 3, t)

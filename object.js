@@ -121,12 +121,11 @@ function ObjectCodec(schema) {
     return min + v_size
   }
 
-  function getNext (buffer, start, end=buffer.length) {
-    if(variable_fields === 0) return start + min
-    else if(length_field) return start + 
-      decodeField(length_field.position, length_field.direct, null, buffer, start, end)
+  function encodedLength (buffer, start, end=buffer.length) {
+    if(variable_fields === 0) return min
+    else if(length_field) return decodeField(length_field.position, length_field.direct, null, buffer, start, end)
     else if(variable_fields === 1) {
-      return start + min + variable_field.pointed.encodedLength(buffer, start+variable_field.position)
+      return min + variable_field.pointed.encodedLength(buffer, start+variable_field.position)
     }
   }
 
@@ -134,7 +133,7 @@ function ObjectCodec(schema) {
     type:'object',
     encode, decode, dereference, reflect, encodingLength,//, encodedLength
     bytes: variable_fields === 0 ? min : null,
-    getNext
+    encodedLength
   }
 }
 
