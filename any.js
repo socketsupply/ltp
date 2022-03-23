@@ -1,5 +1,5 @@
 
-module.exports = function (type_codec, length_codec, codec_lookup) {
+module.exports = function (type_codec, length_codec, codec_lookup, decodePointer) {
   //[type, length, value]
   //not [length, type, value] because then it's the same as
 
@@ -26,8 +26,11 @@ module.exports = function (type_codec, length_codec, codec_lookup) {
     var _start = start + type_codec.bytes + length_codec.bytes
     var _end = Math.min(end, _start+length)
     var codec = codec_lookup(type)
-    var value = codec.decode(buffer, _start , end)
     decode.bytes = end - start
+    if(decodePointer)
+      return {type, length, value:_start}
+
+    var value = codec.decode(buffer, _start , end)
     return {type, value}
   }
 
@@ -41,4 +44,8 @@ module.exports = function (type_codec, length_codec, codec_lookup) {
       return type_codec.bytes + length_codec.decode(start + type_codec.bytes) + length_codec.bytes
     }
   }
+}
+
+module.exports.AnyPointer = function (type, length, lookup) {
+  return module.exports(type, length, lookup, true)
 }
