@@ -22,7 +22,10 @@ var object_string = ipd.ObjectCodec([
 
 var map = {1: fixed, 2:hi_bye, 3:object_string}
 
-var any = Any(ipd.codex.u8, ipd.codex.u16, (type) => map[type])
+var lookup = (type) => map[type]
+
+var any = Any(ipd.codex.u8, ipd.codex.u16, lookup)
+var any2 = Any.AnyPointer(ipd.codex.u8, ipd.codex.u16, (type) => map[type])
 
 var inputs = [
   {type: 1, value: {u8:1, u16: 1_000, u32: 1_000_000}},
@@ -39,10 +42,15 @@ tape('encode, decode', function (t) {
     any.encode({type, value}, b, 0)
     var bytes = any.encode.bytes
     t.equal(bytes, len)
-    console.log(b)
     var actual = any.decode(b, 0)
     t.equal(any.decode.bytes, bytes)
     t.deepEqual(actual, {type, value})
+    var op = any2.decode(b, 0)
+    t.equal(op.type, type)
+    console.log(op)
+    t.deepEqual(lookup(type).decode(b, op.value, op.value+op.length), value)
+
   }  
   t.end()
 })
+
