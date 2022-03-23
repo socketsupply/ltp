@@ -29,6 +29,8 @@ var O = ipd.ObjectCodec([
 var expected = {foo: 1, bar: 1234, name: 'Hello, World!', list: ['foo', 'bar', 'baz']} 
 
 var baz
+// reads types, u9, u32, string_length__u8, string__u8
+// (field positions are hard coded)
 tape('read raw data', function (t) {
 
   var length = O.encode(expected, memory, start)
@@ -58,20 +60,21 @@ function decode_string(ptr) {
   return memory.toString('utf8', str, str+length)
 }
 
+// uses generated methods (with named fields) to read fields
+// uses generated methods to read pointers, and generic methods to read values.
+// (could use generated methods here that do not suffix the field type)
+// decode__basic_name__length ???
 tape('read via generated apis', function (t) {
   t.equal(wasm.decode__basic_foo(start), expected.foo)
   t.equal(wasm.decode__basic_bar(start), expected.bar)
   t.equal(decode_string(wasm.decode__basic_name(start)), expected.name)
   var list = wasm.decode__basic_list(start)
 
-//  console.log('list.length', wasm.decode__u8(list))
-
-  console.log("TABLE", wasm.__indirect_function_table)
   var table = wasm.__indirect_function_table
   console.log('table.length', table.length)
-// tried to pass in a js function to callback but it doesn't seem to work like that.
-//  table.grow(1)
-//  table.set(0, function (a, b) { return a === b })
+  // tried to pass in a js function to callback but it doesn't seem to work like that.
+  //  table.grow(1)
+  //  table.set(0, function (a, b) { return a === b })
   t.equal(wasm.decode_array_length__u8(list), expected.list.length)
 
   for(var i = 0; i < expected.list.length; i++) {
@@ -97,3 +100,16 @@ tape('read via generated apis', function (t) {
   t.end()
 })
 //*/
+
+
+// no this isn't that interesting,
+// bigger question is how to encode
+/*
+tape('same as bipf benchmark', function (t) {
+  wasm.map__get__string_u8(
+    wasm.decode__package_dependencies,
+    Varint
+  )
+  t.end()
+})
+*/
