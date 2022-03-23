@@ -3,6 +3,7 @@ function encodingLength (codec, value) {
 }
 
 function LengthDelimited (id, length_codec, value_codec) {
+  if(!length_codec.bytes) throw new Error('expected length_codec to be fixed length integer codec')
   var ld
   return ld = {
     type: id,
@@ -24,6 +25,12 @@ function LengthDelimited (id, length_codec, value_codec) {
     encodingLength: (value) => {
       var length = value_codec.encodingLength(value)
       return encodingLength(length_codec, length) + length
+    },
+    encodedLength: (buffer, start, end) => {
+      if(end < start + length_codec.bytes)
+        throw new Error('input buffer out of bounds')
+      var length = length_codec.decode(buffer, start)
+      return (length_codec.bytes || length_codec.decode.bytes) + length
     }
   }
 }
