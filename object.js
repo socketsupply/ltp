@@ -55,23 +55,16 @@ function ObjectCodec(schema) {
       var value = a[field.name] = decodeField(field.position, field.direct, field.pointed, buffer, start, end, field.allow_zero)
 
       //remember the bytes, if length is included
-      if(i === 0 && field.isLength) {
+      if(field.isLength) {
         decode.bytes = value
         var _end = start + value
-        console.log('out of bounds?', value, _end, end)
         if(_end > end) throw new Error('length field out of bounds')
         //but a smaller value for end is acceptable.
         end = _end
+      } else if(!length_field && variable_fields == 1 && field == variable_field) {
+        decode.bytes = min + field.pointed.decode.bytes
       }
     }
-    // ^^^ vvv should be combined?
-    if(schema[0].isLength) {
-      var field = schema[0]
-      //var length = decodeField(field.position, field.direct, null, free, buffer, start)
-      decode.bytes = a[schema[0].name]
-    }
-    //    else
-    //decode.bytes = ??? 
 
     //calculating the total bytes decoded is a bit tricky because it's actually possible,
     //with relative pointers, that the bytes are not contigious.
@@ -129,14 +122,13 @@ function ObjectCodec(schema) {
   }
 
   function getNext (buffer, start, end=buffer.length) {
-    console.log({min, variable_fields, length_field})
     if(variable_fields === 0) return start + min
     else if(length_field) return start + 
       decodeField(length_field.position, length_field.direct, null, buffer, start, end)
-    else if(variable_fields === 1) return start + min + variable_field.encodedLength(buffer, start)
+    else if(variable_fields === 1) {
+      return start + min + variable_field.pointed.encodedLength(buffer, start+variable_field.position)
+    }
   }
-
-  console.log('varf', variable_fields)
 
   return {
     type:'object',
