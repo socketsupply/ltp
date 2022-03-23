@@ -72,10 +72,63 @@ over the network, or embedding objects inside of other objects.
 
 to understand what sort of things ipb can represent, it's helpful to understand it's internal data structure.
 
-### ObjectCodec(schema)
+### ObjectCodec([fields...]) => codec
 
 `schema` is an array with an optional LengthField
 then any number of pointed or direct fields [LengthField?, (DirectField|PointedField)*]
+
+returns a `codec` which is based on [`abstract-encoding`](https://github.com/mafintosh/abstract-encoding) but has some extentions, such as a `bytes` property if it's fixed size, and `encodedLength` function.
+
+#### codec.encode (value, buffer, start)
+
+encode `value` into `buffer` at position `start`.
+sets `codec.encode.bytes` to the number of bytes used.
+
+#### codec.decode (buffer, start, end) => value
+
+decode `value` from `buffer` at position `start`.
+if anything goes outside of `end` while reading, then an exception will be thrown.
+By default `end = buffer.length`.
+When an ObjectCodec has a length field, or can otherwise determine the length,
+it may contract the `end` value for any embedded fields.
+
+This is a security feature. Without the `end` field,
+it would be possible to have a record that on the outside would be small,
+but in the inside claimed to be big, which could cause it to read out of bounds memory which could contain sensitive data, such as private keys.
+
+#### codec.encodingLength(value) =>
+
+return the bytes that will be needed to encode `value`
+
+#### codec.bytes //fixed size objects only
+
+If a codec is fixed size, it will have an integer `bytes` property defined.
+Fixed size fields are very useful because they enable much faster reads.
+
+#### codec.encodedLength(buffer, start, end)
+
+return the length used by the record at start, _but do not decode it_.
+Some times it's useful to know how long a record is without decoding it.
+This allows you to for example, process records in a stream.
+
+#### codec.dereference(buffer, start, field_index) => pointer
+
+returns a pointer to where the field at `index` is encoded.
+For direct fields, this returns the fixed offset of that field.
+For variable size, pointed fields, this reads the relative pointer,
+and returns the actual position of the value.
+
+#### codec.reflect(field_index) => codec
+
+returns the codec used for a specific field.
+Use in combination with `dereference`
+
+`codec.reflect(index).decode(buffer, codec.dereference(buffer, start, index))`
+
+
+
+
+### fields
 
 #### DirectField (name, position, value_codec)
 
@@ -129,3 +182,18 @@ of the array. `direct_codec` must be a integer type. `pointed_codec` encodes the
 and should be a variable size codec. The maximum number of elements is the maximum value expressible of `length_codec` divided by the size of `pointed_codec`
 
 if isNullable is true, null pointers are allowed, represented by a relpointer=0.
+
+## Any(type_codec, length_codec, codec_lookup) = require('ipd/any')
+
+A codec for handling dynamic types. This is encoded with the `type`, then the `length` then the codec returned by
+`codec_lookup(type)`. Returns a `{type, value}` object, where `value` is the embedded dynamic object.
+`type_codec` and `length_codec` must both be fixed size.
+
+## Any.AnyPointer(type_codec, length_codec, codec_lookup)
+
+The same as above, but on decode, returns `{type, length, value}` but value is just a pointer to the start
+of where the value is encoded. The end will be at `value + length`.
+
+If you care about performance it maybe important to use in-place access.
+Therefore it's recommended to use AnyPointer and then read specific fields of the returned
+object.
