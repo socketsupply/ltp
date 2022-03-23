@@ -41,7 +41,7 @@ module.exports = function (type_codec, length_codec, codec_lookup, decodePointer
      return type_codec.bytes + length_codec.bytes + codec_lookup(type).encodingLength(value)
     },
     encodedLength: (buffer, start) => {
-      return type_codec.bytes + length_codec.decode(start + type_codec.bytes) + length_codec.bytes
+      return type_codec.bytes + length_codec.decode(buffer, start + type_codec.bytes) + length_codec.bytes
     }
   }
 }

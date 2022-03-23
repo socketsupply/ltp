@@ -42,6 +42,7 @@ tape('encode, decode', function (t) {
     any.encode({type, value}, b, 0)
     var bytes = any.encode.bytes
     t.equal(bytes, len)
+    t.equal(any.encodedLength(b, 0), bytes)
     var actual = any.decode(b, 0)
     t.equal(any.decode.bytes, bytes)
     t.deepEqual(actual, {type, value})
