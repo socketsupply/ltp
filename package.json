@@ -1,7 +1,7 @@
 {
   "name": "ltp",
   "version": "1.0.0",
-  "description": "in-place-binary format. This is a data encoding format inspired by captnproto, but less complex. Captnproto always sounded good, but reading the docs trying to understand how it works always just made me more confused. I would start reading and be bombarded with too many clever ideas like segments and XOR defaults. It's too complex.",
+  "description": "A schemafull binary format, designed for inplace reads, like a simpler version of captnproto",
   "main": "index.js",
   "directories": {
     "test": "test"
