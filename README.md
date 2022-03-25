@@ -1,19 +1,48 @@
 # ltp
 
-in-place-binary format.
-This is a data encoding format inspired by captnproto, but less complex.
+high performance simple in-place encoding format.
+
+High performance and simplicity usually go together.
+We often think of high performance as "more power".
+With, for example, a car, you can put in a larger engine and burn more fuel, faster.
+But with software, that's wrong. To make software faster you can only take away unnecessary work.
+Often, something designed for simplicity is quite fast, because simplicity must also avoid unnecessary work.
+We also like simplicity because it makes it _faster to understand_.
+
+A format such as json may appear simple, because it is so familiar.
+But parsing json text into a data structure involves quite a lot of extra work.
+One aspect of the work is examining each byte in the input, switching between states,
+escaping characters, etc. Another significant aspect is transforming the flat bytes into a
+data structure, (which means the garbage collector must get involved)
+Often, we parse a json object, and then only access one or two fields.
+If there are a lot of data moving through the system this parsing and data structure
+building can be very significant. People say that the JSON parsing libraries built into your system
+are well optimized, and are fast. They may well be fast compared to other JSON libraries,
+but they still include a lot of uncessary work.
+
+An in-place binary format takes a conceptually very different approach.
+"in-place" means that the format is designed so that you can read out individual fields without needing
+to a) examine every byte, and b) without needing to create a data structure.
+
+## other in-place formats
+
+Sadly, there are not many in-place formats available. This is why I need to both explain and design them.
+
+### bipf
+
+[bipf](https://github.com/ssbc/bipf) is another format I created earlier. `bipf` targets json style schemaless data, so it includes unnecessary work compared to `ltp`.
+
+### capt'n'proto
+
 Captnproto always sounded good, but reading the docs trying to understand
 how it works always just made me more confused. I would start reading and
 be bombarded with too many clever ideas like segments and XOR defaults.
-It's too complex.
+I wanted something I could easily understand.
 
-I want something efficient, but also simple.
+## the name: ltp
 
-Like captnproto we rely on a schema, and support in-place reads. The format is designed to be very fast
-to extract a value, so that it is not necessary to parse and copy into a another data structure.
-Instead, you can just quickly jump to the place where the data is and read exactly that value.
-
-I just say "LTP" for the name but it's "lieutenant proto", lieutenant being a lower rank than captain.
+`ltp` can be pronounced like "litup" or LTP.
+The joke was that it's "lieutenant proto", lieutenant being a lower rank than captain.
 
 ## fixed vs variable size fields
 
