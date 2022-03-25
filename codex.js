@@ -37,6 +37,12 @@ var codex = {
       return value
     },
     bytes: 8
+  },
+  buffer: {
+    encode: (value, buffer, start) => { value.copy(buffer, start); this.encode.bytes = value.length },
+    decode: (buffer, start, end) => { value.copy(buffer, start); this.encode.bytes = value.length },
+
+
   }
   //i8, i16, i32, i64 ...
   

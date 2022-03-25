@@ -28,7 +28,7 @@ function generateObjectCodec (name, schema) {
 }
 
 module.exports = function (schemas) {
-  var s = require('fs').readFileSync(path.join(__dirname, 'ipd.h'), 'utf8')
+  var s = require('fs').readFileSync(path.join(__dirname, 'ltp.h'), 'utf8')
   for(var name in schemas)
     s += generateObjectCodec(name, schemas[name])
   return s

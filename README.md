@@ -1,4 +1,4 @@
-# ipb
+# ltp
 
 in-place-binary format.
 This is a data encoding format inspired by captnproto, but less complex.
@@ -12,6 +12,8 @@ I want something efficient, but also simple.
 Like captnproto we rely on a schema, and support in-place reads. The format is designed to be very fast
 to extract a value, so that it is not necessary to parse and copy into a another data structure.
 Instead, you can just quickly jump to the place where the data is and read exactly that value.
+
+I just say "LTP" for the name but it's "lieutenant proto", lieutenant being a lower rank than captain.
 
 ## fixed vs variable size fields
 
@@ -183,7 +185,7 @@ and should be a variable size codec. The maximum number of elements is the maxim
 
 if isNullable is true, null pointers are allowed, represented by a relpointer=0.
 
-## Any(type_codec, length_codec, codec_lookup) = require('ipd/any')
+## Any(type_codec, length_codec, codec_lookup) = require('ltp/any')
 
 A codec for handling dynamic types. This is encoded with the `type`, then the `length` then the codec returned by
 `codec_lookup(type)`. Returns a `{type, value}` object, where `value` is the embedded dynamic object.

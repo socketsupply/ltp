@@ -1,48 +1,48 @@
 var tape = require('tape')
-var ipd = require('../')
+var ltp = require('../')
 var LengthDelimited = require('../length-delimited')
 
-var fixed = ipd.ObjectCodec([
-  ipd.Field('u8', 0, ipd.codex.u8),
-  ipd.Field('u16', 1, ipd.codex.u16),
-  ipd.Field('u32', 3, ipd.codex.u32)
+var fixed = ltp.ObjectCodec([
+  ltp.Field('u8', 0, ltp.codex.u8),
+  ltp.Field('u16', 1, ltp.codex.u16),
+  ltp.Field('u32', 3, ltp.codex.u32)
 ])
 
-var hi_bye = ipd.ObjectCodec([
-  ipd.Field('hello', 0, ipd.codex.u32, ipd.codex.string_u32),
-  ipd.Field('goodbye', 4, ipd.codex.u32, ipd.codex.string_u32)
+var hi_bye = ltp.ObjectCodec([
+  ltp.Field('hello', 0, ltp.codex.u32, ltp.codex.string_u32),
+  ltp.Field('goodbye', 4, ltp.codex.u32, ltp.codex.string_u32)
 ])
 
-var object_string = ipd.ObjectCodec([
-  ipd.Field('u8', 0, ipd.codex.u8),
-  ipd.Field('u16', 1, ipd.codex.u16),
-  ipd.Field('string', 3, ipd.codex.u32, ipd.codex.string_u32)
+var object_string = ltp.ObjectCodec([
+  ltp.Field('u8', 0, ltp.codex.u8),
+  ltp.Field('u16', 1, ltp.codex.u16),
+  ltp.Field('string', 3, ltp.codex.u32, ltp.codex.string_u32)
 ])
 
-var embed = LengthDelimited(11, ipd.codex.u32, ipd.ObjectCodec([
-  ipd.Field('hello', 0, ipd.codex.u32, ipd.codex.string_u32),
-  ipd.Field('goodbye', 4, ipd.codex.u32, ipd.codex.string_u32)
+var embed = LengthDelimited(11, ltp.codex.u32, ltp.ObjectCodec([
+  ltp.Field('hello', 0, ltp.codex.u32, ltp.codex.string_u32),
+  ltp.Field('goodbye', 4, ltp.codex.u32, ltp.codex.string_u32)
 ]))
 
-var container = ipd.ObjectCodec([
-  ipd.Field('number', 0, ipd.codex.u32),
-  ipd.Field('object', 4, ipd.codex.u32, embed)
+var container = ltp.ObjectCodec([
+  ltp.Field('number', 0, ltp.codex.u32),
+  ltp.Field('object', 4, ltp.codex.u32, embed)
 ])
 
-var array_u32= ipd.ArrayCodec(ipd.codex.u32, ipd.codex.u32)
-var array_container = ipd.ObjectCodec([
-  ipd.Field('number', 0, ipd.codex.u32),
-  ipd.Field('array', 4, ipd.codex.u32, array_u32)
+var array_u32= ltp.ArrayCodec(ltp.codex.u32, ltp.codex.u32)
+var array_container = ltp.ObjectCodec([
+  ltp.Field('number', 0, ltp.codex.u32),
+  ltp.Field('array', 4, ltp.codex.u32, array_u32)
 ])
 
 tape('encode decode a single byte', function (t) {
-  var byte_field = ipd.Field('byte', 0, ipd.codex.u8) 
+  var byte_field = ltp.Field('byte', 0, ltp.codex.u8) 
   var size = 1
-  t.equal(ipd.getMinimumSize([byte_field]), size)
+  t.equal(ltp.getMinimumSize([byte_field]), size)
 
   var b = Buffer.alloc(size)
 
-  var object_c = ipd.ObjectCodec([byte_field])
+  var object_c = ltp.ObjectCodec([byte_field])
   var expected = {byte: 123}
   object_c.encode(expected, b, 0)
   t.deepEqual(object_c.decode(b, 0), expected)
@@ -66,7 +66,7 @@ tape('encode/decode rel pointers', function (t) {
 
   var expected = {hello: 'hello world!!!', goodbye: 'whatever'}
   var size = 4+4+14+4+4+8
-//  t.equal(ipd.getMinimumSize(schema), 8)
+//  t.equal(ltp.getMinimumSize(schema), 8)
 
   var b = Buffer.alloc(size)
 
@@ -150,21 +150,21 @@ tape('dereference pointer to specific direct field', function (t) {
   var b = Buffer.alloc(1+2+ 4+4+5)
   object_string.encode(expected, b, 0)
   var p = object_string.dereference(b, 0, 1)
-  t.equal(ipd.codex.u16.decode(b, p), expected.u16)
+  t.equal(ltp.codex.u16.decode(b, p), expected.u16)
   var str_p = object_string.dereference(b, 0, 2)
-  t.equal(ipd.codex.string_u32.decode(b, str_p), expected.string)
+  t.equal(ltp.codex.string_u32.decode(b, str_p), expected.string)
   t.end()
 })
 
 tape('decode nested field', function (t) {
-  var embed_codec = ipd.ObjectCodec([
-    ipd.Field('hello', 0, ipd.codex.u32, ipd.codex.string_u32),
-    ipd.Field('goodbye', 4, ipd.codex.u32, ipd.codex.string_u32)
+  var embed_codec = ltp.ObjectCodec([
+    ltp.Field('hello', 0, ltp.codex.u32, ltp.codex.string_u32),
+    ltp.Field('goodbye', 4, ltp.codex.u32, ltp.codex.string_u32)
   ])
-  var container_codec = ipd.ObjectCodec([
-    ipd.Field('number', 0, ipd.codex.u32),
-    ipd.Field('number2', 4, ipd.codex.u32),
-    ipd.Field('object', 8, ipd.codex.u32, embed_codec)
+  var container_codec = ltp.ObjectCodec([
+    ltp.Field('number', 0, ltp.codex.u32),
+    ltp.Field('number2', 4, ltp.codex.u32),
+    ltp.Field('object', 8, ltp.codex.u32, embed_codec)
   ])
 
   var expected = {number:7, number2:13, object: {hello:'hello world!!!', goodbye: 'whatever'}}
@@ -174,16 +174,16 @@ tape('decode nested field', function (t) {
   var b = Buffer.alloc(size)
   console.log(b)
   container_codec.encode(expected, b, 0)
-  var decode_object_goodbye = ipd.drill(container_codec, ['object', 'goodbye'])
+  var decode_object_goodbye = ltp.drill(container_codec, ['object', 'goodbye'])
   t.equal(decode_object_goodbye(b, 0), 'whatever')
   t.end()
 })
 
 tape('automatic length field', function (t) {
-  var length_codec = ipd.ObjectCodec([
-    ipd.LengthField('length', 0, ipd.codex.u8),
-    ipd.Field('hello', 1, ipd.codex.u32, ipd.codex.string_u32),
-    ipd.Field('goodbye', 5, ipd.codex.u32, ipd.codex.string_u32)
+  var length_codec = ltp.ObjectCodec([
+    ltp.LengthField('length', 0, ltp.codex.u8),
+    ltp.Field('hello', 1, ltp.codex.u32, ltp.codex.string_u32),
+    ltp.Field('goodbye', 5, ltp.codex.u32, ltp.codex.string_u32)
   ])
 
   var size = 1+ 4+4 +4+5 +4+7
@@ -204,13 +204,13 @@ tape('automatic length field', function (t) {
 })
 
 tape('isFixedSize', function (t) {
-  var length_codec = ipd.ObjectCodec([
-    ipd.LengthField('length', 0, ipd.codex.u8),
-    ipd.Field('hello', 1, ipd.codex.u32, ipd.codex.string_u32),
-    ipd.Field('goodbye', 5, ipd.codex.u32, ipd.codex.string_u32)
+  var length_codec = ltp.ObjectCodec([
+    ltp.LengthField('length', 0, ltp.codex.u8),
+    ltp.Field('hello', 1, ltp.codex.u32, ltp.codex.string_u32),
+    ltp.Field('goodbye', 5, ltp.codex.u32, ltp.codex.string_u32)
   ])
-  t.equal(ipd.isFixedSize(length_codec), false)
-  t.equal(ipd.isFixedSize(ipd.codex.u8), true)
+  t.equal(ltp.isFixedSize(length_codec), false)
+  t.equal(ltp.isFixedSize(ltp.codex.u8), true)
   t.end()
 })
 
@@ -219,9 +219,9 @@ tape('Field requires fixed size', function (t) {
   //in the last position. (But it does mean you cannot add field after that)
   //because the field always starts in a fixed position.
   t.throws(() => {
-    var invalid_codec = ipd.ObjectCodec([
-      ipd.Field('hello', 0, ipd.codex.string_u32),
-      ipd.Field('goodbye', 4, ipd.codex.u32)
+    var invalid_codec = ltp.ObjectCodec([
+      ltp.Field('hello', 0, ltp.codex.string_u32),
+      ltp.Field('goodbye', 4, ltp.codex.u32)
     ])
   })
   t.end()
@@ -229,10 +229,10 @@ tape('Field requires fixed size', function (t) {
 
 tape('nullable fields, objects', function (t) {
 
-  var nf_codec = ipd.ObjectCodec([
-    ipd.LengthField('length', 0, ipd.codex.u8),
-    ipd.Field('hello', 1, ipd.codex.u8, ipd.codex.string_u8, true),
-    ipd.Field('goodbye', 2, ipd.codex.u8, ipd.codex.string_u8)
+  var nf_codec = ltp.ObjectCodec([
+    ltp.LengthField('length', 0, ltp.codex.u8),
+    ltp.Field('hello', 1, ltp.codex.u8, ltp.codex.string_u8, true),
+    ltp.Field('goodbye', 2, ltp.codex.u8, ltp.codex.string_u8)
   ])
 
   var expected = {length: 0, goodbye:'GB'}
@@ -249,7 +249,7 @@ tape('nullable fields, objects', function (t) {
 
 tape('nullable fields, arrays', function (t) {
 
-  var nfa_codec = ipd.ArrayCodec(ipd.codex.u8, ipd.codex.u8, ipd.codex.string_u8, true)
+  var nfa_codec = ltp.ArrayCodec(ltp.codex.u8, ltp.codex.u8, ltp.codex.string_u8, true)
 
   var expected = ['hello', , 'goodbye']
   var size = 1 + 3 + 1 + 5 + 1 + 7
@@ -265,14 +265,14 @@ tape('nullable fields, arrays', function (t) {
 
 tape('nullable fields, drill', function (t) {
 
-  var embed_codec = ipd.ObjectCodec([
-    ipd.Field('hello', 0, ipd.codex.u32, ipd.codex.string_u32),
-    ipd.Field('goodbye', 4, ipd.codex.u32, ipd.codex.string_u32)
+  var embed_codec = ltp.ObjectCodec([
+    ltp.Field('hello', 0, ltp.codex.u32, ltp.codex.string_u32),
+    ltp.Field('goodbye', 4, ltp.codex.u32, ltp.codex.string_u32)
   ])
-  var container_codec = ipd.ObjectCodec([
-    ipd.Field('number', 0, ipd.codex.u32),
-    ipd.Field('number2', 4, ipd.codex.u32),
-    ipd.Field('object', 8, ipd.codex.u32, embed_codec, true)
+  var container_codec = ltp.ObjectCodec([
+    ltp.Field('number', 0, ltp.codex.u32),
+    ltp.Field('number2', 4, ltp.codex.u32),
+    ltp.Field('object', 8, ltp.codex.u32, embed_codec, true)
   ])
   var expected = {number:7, number2:13}
   var size =  4 + 4 + 4 //+ 4+4 + 14 + 4+4 + 8
@@ -281,26 +281,26 @@ tape('nullable fields, drill', function (t) {
   var b = Buffer.alloc(size)
   container_codec.encode(expected, b, 0)
   console.log(b)
-  var decode_object_goodbye = ipd.drill(container_codec, ['object', 'goodbye'])
+  var decode_object_goodbye = ltp.drill(container_codec, ['object', 'goodbye'])
   t.equal(decode_object_goodbye(b, 0), null)
   t.end()
 })
 
 tape('invalid schema', function (t) {
   var invalid_schema = [
-    ipd.Field('number', 0, ipd.codex.u32),
-    ipd.Field('number2', 1, ipd.codex.u16),
+    ltp.Field('number', 0, ltp.codex.u32),
+    ltp.Field('number2', 1, ltp.codex.u16),
   ]
   var valid_schema = [
-    ipd.Field('number', 0, ipd.codex.u32),
-    ipd.Field('number2', 6, ipd.codex.u16),
+    ltp.Field('number', 0, ltp.codex.u32),
+    ltp.Field('number2', 6, ltp.codex.u16),
   ]
 
-  t.equal(ipd.isNonOverlapping(invalid_schema), false)
-  t.equal(ipd.isNonOverlapping(valid_schema), true)
+  t.equal(ltp.isNonOverlapping(invalid_schema), false)
+  t.equal(ltp.isNonOverlapping(valid_schema), true)
 
   t.throws(()=>
-    ipd.ObjectCodec(invalid_schema)
+    ltp.ObjectCodec(invalid_schema)
   )
   t.end()
 })
@@ -311,9 +311,9 @@ tape('invalid schema', function (t) {
 //as appeared in same famous security vulnerabilities in recent years
 
 tape('handle invalid fields out of bounds', function (t) {
-  var codec = ipd.ObjectCodec([
-    ipd.LengthField('length', 0, ipd.codex.u8),
-    ipd.Field('hello', 1, ipd.codex.u8, ipd.codex.string_u8)
+  var codec = ltp.ObjectCodec([
+    ltp.LengthField('length', 0, ltp.codex.u8),
+    ltp.Field('hello', 1, ltp.codex.u8, ltp.codex.string_u8)
   ])
   var size = codec.encodingLength({hello: 'hi'})
   var b = Buffer.alloc(size)
@@ -347,7 +347,7 @@ function createAssertErr(t) {
 }
 
 tape('handle invalid fields out of bounds, array', function (t) {
-  var codec = ipd.ArrayCodec(ipd.codex.u8, ipd.codex.u8, ipd.codex.string_u8)
+  var codec = ltp.ArrayCodec(ltp.codex.u8, ltp.codex.u8, ltp.codex.string_u8)
   var input = ['hi', 'bye']
   var size = codec.encodingLength(input)
   var b = Buffer.alloc(size)
@@ -398,9 +398,9 @@ tape('handle invalid fields out of bounds, array', function (t) {
 
 
 tape('encode field that\'s too large to be expressed by length type', function (t) {
-    var codec = ipd.ObjectCodec([
-    ipd.LengthField('length', 0, ipd.codex.u8),
-    ipd.Field('hello', 1, ipd.codex.u8, ipd.codex.string_u8)
+    var codec = ltp.ObjectCodec([
+    ltp.LengthField('length', 0, ltp.codex.u8),
+    ltp.Field('hello', 1, ltp.codex.u8, ltp.codex.string_u8)
   ])
   var l = 256
   var xs = Buffer.alloc(l).fill('x').toString()
@@ -425,25 +425,25 @@ tape('encode field that\'s too large to be expressed by length type', function (
 
 tape('u{8,16,32,64} out of bounds checks', function (t) {
   var b = Buffer.alloc(8)
-  t.throws(()=>ipd.codex.u8.encode(0x100, b, 0))
-  t.throws(()=>ipd.codex.u16.encode(0x1_0000, b, 0))
-  t.throws(()=>ipd.codex.u32.encode(0x1_0000_0000, b, 0))
-  t.throws(()=>ipd.codex.u64.encode(0x1_0000_0000_0000_0000n, b, 0))
+  t.throws(()=>ltp.codex.u8.encode(0x100, b, 0))
+  t.throws(()=>ltp.codex.u16.encode(0x1_0000, b, 0))
+  t.throws(()=>ltp.codex.u32.encode(0x1_0000_0000, b, 0))
+  t.throws(()=>ltp.codex.u64.encode(0x1_0000_0000_0000_0000n, b, 0))
 
-  t.throws(()=>ipd.codex.u8.encode(-1, b, 0))
-  t.throws(()=>ipd.codex.u16.encode(-1, b, 0))
-  t.throws(()=>ipd.codex.u32.encode(-1, b, 0))
+  t.throws(()=>ltp.codex.u8.encode(-1, b, 0))
+  t.throws(()=>ltp.codex.u16.encode(-1, b, 0))
+  t.throws(()=>ltp.codex.u32.encode(-1, b, 0))
   //u64 accepts numbers or big int
-  t.throws(()=>ipd.codex.u64.encode(-1, b, 0))
-  t.throws(()=>ipd.codex.u64.encode(-1n, b, 0))
+  t.throws(()=>ltp.codex.u64.encode(-1, b, 0))
+  t.throws(()=>ltp.codex.u64.encode(-1n, b, 0))
   t.end()
 
 })
 
 tape('fixed position variable sized field', function (t) {
-  var codec = ipd.ObjectCodec([
-    ipd.Field('foo', 0, ipd.codex.u8),
-    ipd.FixedPositionVariableSizeField('bar', 1, ipd.codex.string_u8)
+  var codec = ltp.ObjectCodec([
+    ltp.Field('foo', 0, ltp.codex.u8),
+    ltp.FixedPositionVariableSizeField('bar', 1, ltp.codex.string_u8)
   ])
   var b = Buffer.alloc(1+1+3)
   var expected = {foo: 10, bar: 'baz'}
@@ -459,10 +459,10 @@ tape('fixed position variable sized field', function (t) {
 })
 
 tape('fixed position variable sized field must fail if not in last position', function (t) {
-  t.throws(()=> {ipd.ObjectCodec([
-    ipd.Field('foo', 1, ipd.codex.u8),
-    ipd.FixedPositionVariableSizeField('bar', 0, ipd.codex.string_u8)
-//    ipd.Field('bar', 1, Constant(0), ipd.codex.string_u8, false)
+  t.throws(()=> {ltp.ObjectCodec([
+    ltp.Field('foo', 1, ltp.codex.u8),
+    ltp.FixedPositionVariableSizeField('bar', 0, ltp.codex.string_u8)
+//    ltp.Field('bar', 1, Constant(0), ltp.codex.string_u8, false)
   ])})
   t.end()
 })
@@ -490,17 +490,17 @@ function decodeAll(codec, _ary, b, count, t) {
 
 tape('getNext, fixed size', function (t) {
   var schema = [
-    ipd.Field('u8', 0, ipd.codex.u8),
-    ipd.Field('u16', 1, ipd.codex.u16),
-    ipd.Field('u32', 3, ipd.codex.u32)
+    ltp.Field('u8', 0, ltp.codex.u8),
+    ltp.Field('u16', 1, ltp.codex.u16),
+    ltp.Field('u32', 3, ltp.codex.u32)
   ]
 
   var size = 7
-  t.equal(ipd.getMinimumSize(schema), size)
+  t.equal(ltp.getMinimumSize(schema), size)
 
   var b = Buffer.alloc(size*3)
 
-  var object_c = ipd.ObjectCodec(schema)
+  var object_c = ltp.ObjectCodec(schema)
   var expected = [
     {u8: 12, u16:1_000, u32: 1_000_000},
     {u8: 34, u16:2_000, u32: 2_000_000},
@@ -521,17 +521,17 @@ tape('getNext, fixed size', function (t) {
 
 tape('getNext, variable sized, length delimited', function (t) {
   var schema = [
-    ipd.LengthField('length', 0, ipd.codex.u16),
-    ipd.Field('first', 2, ipd.codex.u16, ipd.codex.string_u8),
-    ipd.Field('last', 4, ipd.codex.u16, ipd.codex.string_u8),
-    ipd.Field('age', 6, ipd.codex.u16)
+    ltp.LengthField('length', 0, ltp.codex.u16),
+    ltp.Field('first', 2, ltp.codex.u16, ltp.codex.string_u8),
+    ltp.Field('last', 4, ltp.codex.u16, ltp.codex.string_u8),
+    ltp.Field('age', 6, ltp.codex.u16)
   ]
 
-  t.equal(ipd.getMinimumSize(schema), 8)
+  t.equal(ltp.getMinimumSize(schema), 8)
 
   var b = Buffer.alloc(1024)
 
-  var object_c = ipd.ObjectCodec(schema)
+  var object_c = ltp.ObjectCodec(schema)
   var expected = [
     {first: 'alice', last: 'algorithm', age: 36},
     {first: 'bob', last: 'binary', age: 64},
@@ -549,13 +549,13 @@ tape('getNext, variable sized, length delimited', function (t) {
 
 tape('getNext, single variable sized field', function (t) {
   var schema = [
-    ipd.Field('age', 0, ipd.codex.u16),
-    ipd.FixedPositionVariableSizeField('name', 2, ipd.codex.string_u8),
+    ltp.Field('age', 0, ltp.codex.u16),
+    ltp.FixedPositionVariableSizeField('name', 2, ltp.codex.string_u8),
   ]
 
   var b = Buffer.alloc(1024)
 
-  var object_c = ipd.ObjectCodec(schema)
+  var object_c = ltp.ObjectCodec(schema)
   var expected = [
     {name: 'alice', age: 36},
     {name: 'bob', age: 64},

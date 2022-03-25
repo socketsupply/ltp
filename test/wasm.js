@@ -1,6 +1,6 @@
 var fs = require('fs')
 var path = require('path')
-var ipd = require('../index')
+var ltp = require('../index')
 
 var tape = require('tape')
 
@@ -8,7 +8,7 @@ var tape = require('tape')
 var wasm, memory, start
 
 tape('init', function (t) {
-  var src = new Uint8Array(fs.readFileSync(path.join(__dirname, '..', 'ipd.wasm')))
+  var src = new Uint8Array(fs.readFileSync(path.join(__dirname, '..', 'ltp.wasm')))
   WebAssembly.instantiate(src, {
 
   }).then(function (module) {
@@ -19,11 +19,11 @@ tape('init', function (t) {
   })
 })
   
-var O = ipd.ObjectCodec([
-  ipd.DirectField('foo', 0, ipd.codex.u8),
-  ipd.DirectField('bar', 1, ipd.codex.u32),
-  ipd.PointedField('name', 5, ipd.codex.u8, ipd.codex.string_u8),
-  ipd.PointedField('list', 6, ipd.codex.u8, ipd.ArrayCodec(ipd.codex.u8, ipd.codex.u8, ipd.codex.string_u8))
+var O = ltp.ObjectCodec([
+  ltp.DirectField('foo', 0, ltp.codex.u8),
+  ltp.DirectField('bar', 1, ltp.codex.u32),
+  ltp.PointedField('name', 5, ltp.codex.u8, ltp.codex.string_u8),
+  ltp.PointedField('list', 6, ltp.codex.u8, ltp.ArrayCodec(ltp.codex.u8, ltp.codex.u8, ltp.codex.string_u8))
 ])
 
 var expected = {foo: 1, bar: 1234, name: 'Hello, World!', list: ['foo', 'bar', 'baz']} 
@@ -35,7 +35,7 @@ tape('read raw data', function (t) {
 
   var length = O.encode(expected, memory, start)
   baz = start+O.encode.bytes
-  ipd.codex.string_u8.encode('baz', memory, baz)
+  ltp.codex.string_u8.encode('baz', memory, baz)
   console.log(memory.slice(start, start+30))
 
 

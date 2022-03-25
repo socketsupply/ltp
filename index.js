@@ -7,7 +7,6 @@ DirectField, PointedField, LengthField,  Constant
 var ObjectCodec = require('./object')
 var ArrayCodec = require('./array')
 
-
 function DirectArrayCodec(length_codec, direct_codec) {
   return ArrayCodec(length_codec, direct_codec, null, false)
 }
