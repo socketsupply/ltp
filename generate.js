@@ -5,6 +5,9 @@ function generateObjectCodec (name, schema) {
   function decode(field, decoder) {
     return `decode__${name}_${field.name}`
   }
+  function encode(field, decoder) {
+    return `encode__${name}_${field.name}`
+  }
   schema.forEach(function (field) {
 
     if(field.pointed && 'array' === field.pointed.type) {
@@ -14,17 +17,19 @@ function generateObjectCodec (name, schema) {
       // for_each__<schema>_<field>(buf, each)
     }
 
-    if(field.direct && !field.pointed)
-      s += (`${field.direct.type} ${decode(field)} (byte* buf) {\n  return decode__${field.direct.type}((byte*)(buf+${field.position})); \n}`)
+    if(field.direct && !field.pointed) {
+      s += (`${field.direct.type} ${decode(field)} (byte* buf) {\n  return decode__${field.direct.type}((byte*)(buf+${field.position})); \n}\n`)
+      s += (`void ${encode(field)} (byte* buf, ${field.direct.type} v_${field.name}) {\n  encode__${field.direct.type}((byte*)(buf+${field.position}), v_${field.name}); \n}\n`)     
+    }
 
     else if(field.direct && field.pointed)
       //returns a pointer to the field type
-      s += (`${field.pointed.type}* ${decode(field)} (byte* buf) { return (${field.pointed.type}*)decode_relp__${field.direct.type}(buf+${field.position}); }`)
+      s += (`${field.pointed.type}* ${decode(field)} (byte* buf) {\n  return (${field.pointed.type}*)decode_relp__${field.direct.type}(buf+${field.position}); \n}\n`)
 
     else if(!field.direct && field.pointed)
-      s += (`${field.pointed.type}* ${decode(field)} (byte* buf) { return (${field.pointed.type})(buf+${field.position}); }`)
+      s += (`${field.pointed.type}* ${decode(field)} (byte* buf) {\n  return (${field.pointed.type})(buf+${field.position}); \n}\n`)
   })
-  return s
+  return s + '\n'
 }
 
 module.exports = function (schemas) {
