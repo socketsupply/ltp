@@ -10,13 +10,13 @@ var codex = {
     bytes: 1,
   },
   u16: {
-    encode: (value, buffer, start) => { buffer.writeUint16LE(value, start) },
-    decode: (buffer, start) => buffer.readUint16LE(start),
+    encode: (value, buffer, start=0) => { buffer.writeUint16LE(value, start) },
+    decode: (buffer, start=0) => buffer.readUint16LE(start),
     bytes: 2,
   },
   u32: {
-    encode: (value, buffer, start) => { buffer.writeUint32LE(value, start) },
-    decode: (buffer, start) => buffer.readUint32LE(start),
+    encode: (value, buffer, start=0) => { buffer.writeUint32LE(value, start) },
+    decode: (buffer, start=0) => buffer.readUint32LE(start),
     bytes: 4,
   },
   u64: {
