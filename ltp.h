@@ -56,13 +56,16 @@ typedef struct {
   int decode__##INT_TYPE (byte* buf) { return (int)*(INT_TYPE*)(buf); } \
   void encode__##INT_TYPE (byte* buf, INT_TYPE val) { *(INT_TYPE*)buf = val; }
 
+//decode_repl takes a pointer, reads the relp from it, and returns a new pointer.
+//encode_repl, takes two pointers. one is where the relp is stored, the other is what it points to.
+
 #define encode_decode_relp(INT_TYPE) \
-  int decode_relp__##INT_TYPE (byte* buf) { \
+  byte* decode_relp__##INT_TYPE (byte* buf) { \
     INT_TYPE v = decode__##INT_TYPE(buf); \
-    return v == 0 ? 0 : (byte*)(buf + v) ; \
+    return (byte*)(v == 0 ? 0 : buf + v) ; \
   } \
-  void encode_relp__##INT_TYPE (byte* buf, byte *val) { \
-    *(INT_TYPE*)buf = (INT_TYPE)(val - buf); \
+  void encode_relp__##INT_TYPE (byte* relp, byte* target) { \
+    *(INT_TYPE*)relp = (INT_TYPE)(target - relp); \
    }
 
 encode_decode_int(u8)
