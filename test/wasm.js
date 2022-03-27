@@ -5,13 +5,14 @@ var ltp = require('../index')
 var tape = require('tape')
 
 
-var wasm, memory, start
+var wasm, memory, start, module
 
 tape('init', function (t) {
   var src = new Uint8Array(fs.readFileSync(path.join(__dirname, '..', 'ltp.wasm')))
   WebAssembly.instantiate(src, {
 
-  }).then(function (module) {
+  }).then(function (_module) {
+    module = _module
     memory = Buffer.from(module.instance.exports.memory.buffer)
     start = module.instance.exports.__heap_base.value
     wasm = module.instance.exports
@@ -100,6 +101,16 @@ tape('read via generated apis', function (t) {
   t.end()
 })
 //*/
+
+tape('encode via C', function (t) {
+
+  wasm.encode__basic_foo(start, 10)
+  wasm.encode__basic_bar(start, 1_000)
+  t.equal(wasm.decode__basic_foo(start), 10)
+  t.equal(wasm.decode__basic_bar(start), 1_000)
+  t.deepEqual(O.decode(memory, start), {...expected, foo:10, bar:1_000, })
+  t.end()
+})
 
 
 // no this isn't that interesting,
