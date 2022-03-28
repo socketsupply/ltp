@@ -1,36 +1,44 @@
 # ltp
 
-high performance simple in-place encoding format.
+A high performance, readable, and maintainable, in-place encoding format.
 
-High performance and simplicity usually go together.
-We often think of high performance as "more power".
-With, for example, a car, you can put in a larger engine and burn more fuel, faster.
-But with software, that's wrong. To make software faster you can only take away unnecessary work.
-Often, something designed for simplicity is quite fast, because simplicity must also avoid unnecessary work.
-We also like simplicity because it makes it _faster to understand_.
+An "in-place" format is designed so that you can read out individual
+fields without needing to a) examine every byte, and b) without needing to
+create a data structure.
 
-A format such as json may appear simple, because it is so familiar.
+## Motivation
+
+High performance and simplicity usually go together. We often think of high
+performance as "more power". With, for example, a car, you can put in a larger
+engine and burn more fuel, faster. But with software, that's wrong. To make
+software faster you can only take away unnecessary work. Often, somethin
+designed for simplicity is quite fast, because simplicity must also avoid
+unnecessary work. We also like simplicity because it makes it _faster to understand_.
+
+A format such as JSON may appear simple, because it is so familiar.
 But parsing json text into a data structure involves quite a lot of extra work.
-One aspect of the work is examining each byte in the input, switching between states,
-escaping characters, etc. Another significant aspect is transforming the flat bytes into a
-data structure, (which means the garbage collector must get involved)
-Often, we parse a json object, and then only access one or two fields.
-If there are a lot of data moving through the system this parsing and data structure
-building can be very significant. People say that the JSON parsing libraries built into your system
-are well optimized, and are fast. They may well be fast compared to other JSON libraries,
-but they still include a lot of uncessary work.
+One aspect of the work is examining each byte in the input, switching between
+states, escaping characters, etc. Another significant aspect is transforming the
+flat bytes into a data structure, (which means the garbage collector must get
+involved) Often, we parse a json object, and then only access one or two fields.
+If there are a lot of data moving through the system this parsing and data
+structure building can be very significant. People say that the JSON parsing
+libraries built into your system are well optimized, and are fast. They may well
+be fast compared to other JSON libraries, but they still include a lot of
+uncessary work.
 
-An in-place binary format takes a conceptually very different approach.
-"in-place" means that the format is designed so that you can read out individual fields without needing
-to a) examine every byte, and b) without needing to create a data structure.
+`ltp` can be pronounced like "litup" or LTP. The joke was that it's "lieutenant
+proto", lieutenant being a lower rank than captain.
 
-## other in-place formats
+## Prior Work
 
-Sadly, there are not many in-place formats available. This is why I need to both explain and design them.
+Sadly, there are not many in-place formats available. This is why I need to both
+explain and design them.
 
 ### bipf
 
-[bipf](https://github.com/ssbc/bipf) is another format I created earlier. `bipf` targets json style schemaless data, so it includes unnecessary work compared to `ltp`.
+[bipf](https://github.com/ssbc/bipf) is another format I created earlier. `bipf`
+targets json style schemaless data, so it includes unnecessary work compared to `ltp`.
 
 ### capt'n'proto
 
@@ -39,12 +47,7 @@ how it works always just made me more confused. I would start reading and
 be bombarded with too many clever ideas like segments and XOR defaults.
 I wanted something I could easily understand.
 
-## the name: ltp
-
-`ltp` can be pronounced like "litup" or LTP.
-The joke was that it's "lieutenant proto", lieutenant being a lower rank than captain.
-
-## fixed vs variable size fields
+## Fixed vs variable size fields
 
 Your basic primitives: numbers, boolean, are always the same size.
 These are always encoded at the start of an object, and in the same position.
@@ -56,14 +59,17 @@ are variable sized.
 An object with only fixed size fields are simple.
 
 with the schema
-```
+
+```c
 {
   count i32
   b u8
   foo boolean
 }
 ```
+
 and values (`{count: 123, b: 64, foo: true}`)
+
 ```
 7b 00 00 00 //4 bytes, little endian
 40          // a single byte 0x40=64
@@ -72,12 +78,13 @@ and values (`{count: 123, b: 64, foo: true}`)
 
 this object always takes 6 bytes no matter what it's field values are.
 
-On the other hand, variable sized fields are encoded with a relative pointer in the fixed size
-section - like primitive values, this is always in the same position.
+On the other hand, variable sized fields are encoded with a relative pointer in
+the fixed size section - like primitive values, this is always in the same
+position.
 
 using the schema
 
-```
+```c
 {
   count i32 //32 bit integer
   name string_u32 //string up to max u32 length
@@ -85,23 +92,25 @@ using the schema
 ```
 
 ```
-00 00 00 00 //32 byte integer
+00 00 00 00 // 32 byte integer
 04 00 00 00 // --, pointer to subsequent string
 ---         //   | (end of fixed section)
 05 00 00 00 // <-` length of a string
 68 65 6c 6c 6f
 ```
 
-The value of the relative pointer is the number of bytes from the pointer's position
-to where the data value is. This is always after the fixed size values.
-The advantage of a relative pointer like this is that it always has the same meaning
-in different positions. An encoded object with relative pointers can be embedded inside
-another and the pointers remain valid, this is very handy when transmitting objects
-over the network, or embedding objects inside of other objects.
+The value of the relative pointer is the number of bytes from the pointer's
+position to where the data value is. This is always after the fixed size values.
+The advantage of a relative pointer like this is that it always has the same
+meaning in different positions. An encoded object with relative pointers can be
+embedded inside another and the pointers remain valid, this is very handy when
+transmitting objects over the network, or embedding objects inside of other
+objects.
 
-## schema data structure
+## Schema data structure
 
-to understand what sort of things ipb can represent, it's helpful to understand it's internal data structure.
+To understand what sort of things ipb can represent, it's helpful to understand
+it's internal data structure.
 
 ### ObjectCodec([fields...]) => codec
 
@@ -156,10 +165,7 @@ Use in combination with `dereference`
 
 `codec.reflect(index).decode(buffer, codec.dereference(buffer, start, index))`
 
-
-
-
-### fields
+### Fields
 
 #### DirectField (name, position, value_codec)
 
