@@ -22,10 +22,11 @@ function generateObjectCodec (name, schema) {
       s += (`void ${encode(field)} (byte* buf, ${field.direct.type} v_${field.name}) {\n  encode__${field.direct.type}((byte*)(buf+${field.position}), v_${field.name}); \n}\n`)     
     }
 
-    else if(field.direct && field.pointed)
+    else if(field.direct && field.pointed) {
       //returns a pointer to the field type
       s += (`${field.pointed.type}* ${decode(field)} (byte* buf) {\n  return (${field.pointed.type}*)decode_relp__${field.direct.type}(buf+${field.position}); \n}\n`)
-
+      s += (`void ${encode(field)} (byte* buf, ${field.pointed.type}* v_${field.name}) {\n  encode_relp__${field.direct.type}(buf+${field.position}, v_${field.name});\n}\n`)
+    }
     else if(!field.direct && field.pointed)
       s += (`${field.pointed.type}* ${decode(field)} (byte* buf) {\n  return (${field.pointed.type})(buf+${field.position}); \n}\n`)
   })

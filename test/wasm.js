@@ -124,6 +124,10 @@ tape('encode via C', function (t) {
   t.equal(wasm.decode__length__string_u8(string_u8), 5)
   console.log(memory.slice(string_u8, string_u8+1+5))
   console.log(decode_string(string_u8))
+
+  wasm.encode__basic_name(start, string_u8)
+
+  t.equal(O.decode(memory, start).name, 'HELLO')
   t.end()
 })
 
