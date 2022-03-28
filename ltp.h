@@ -14,6 +14,18 @@ typedef byte string_u8;
 typedef byte string_u32;
 typedef byte array_u8;
 typedef byte array_u32;
+
+#define bytes_u8  1
+#define bytes_u16 2
+#define bytes_u32 4
+#define bytes_u64 8
+
+#define bytes_i8  1
+#define bytes_i16 2
+#define bytes_i32 4
+#define bytes_i64 8
+
+
 //*/
 
 /*
@@ -86,17 +98,17 @@ encode_decode_relp(u64)
 //it's needed to have cyclic objects.
 
 
-int decode_string_length__u32 (byte* buf) {
-  return decode__u32(buf);
-}
+//int decode_string_length__u32 (byte* buf) {
+//  return decode__u32(buf);
+//}
 byte* decode_string__u32 (byte* buf) {
   return (byte*)(buf + sizeof(u32));
 }
 
-int decode_string_length__u8 (byte* buf) {
+int decode__length__string_u8 (byte* buf) {
   return decode__u8(buf);
 }
-byte* decode_string__u8 (byte* buf) {
+byte* decode__string_u8 (byte* buf) {
   return (byte*)(buf + sizeof(u8));
 }
 
@@ -170,6 +182,16 @@ int array_index_of__u8(byte* ary, byte* target, equality_test fn ) {
 
 int array_index_of__string_u8(byte* ary, byte* target) {
   return array_index_of__u8(ary, target, equals__addr);
+}
+
+void _memcpy (byte* a, byte* b, u32 length) {
+  for(u32 i = 0; i < length; i++)
+    *(byte*)(b+i) = *(a+i);
+}
+
+void encode__string_u8 (byte* buf, char *string, u32 string_length) {
+  encode__u8(buf, string_length);
+  _memcpy((byte*)string, buf+bytes_u8, string_length);
 }
 
 // ----------------- ENCODE ----

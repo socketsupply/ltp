@@ -42,12 +42,12 @@ tape('read raw data', function (t) {
 
   t.equal(wasm.decode__u8(start), expected.foo)
   t.equal(wasm.decode__u32(start+1), expected.bar)
-  var length = wasm.decode_string_length__u8(wasm.decode_relp__u8(start+5)) 
+  var length = wasm.decode__length__string_u8(wasm.decode_relp__u8(start+5)) 
 
   console.log(O.decode(memory, start))
 
   t.equal(length, expected.name.length)
-  var str = wasm.decode_string__u8(wasm.decode_relp__u8(start+5))
+  var str = wasm.decode__string_u8(wasm.decode_relp__u8(start+5))
   console.log(str)
   t.equal(memory.slice(str, str+length).toString(), expected.name)
 //  module.instance.exports
@@ -56,8 +56,8 @@ tape('read raw data', function (t) {
 })
 
 function decode_string(ptr) {
-  var length = wasm.decode_string_length__u8(ptr) 
-  var str = wasm.decode_string__u8(ptr)
+  var length = wasm.decode__length__string_u8(ptr) 
+  var str = wasm.decode__string_u8(ptr)
   return memory.toString('utf8', str, str+length)
 }
 
@@ -109,6 +109,21 @@ tape('encode via C', function (t) {
   t.equal(wasm.decode__basic_foo(start), 10)
   t.equal(wasm.decode__basic_bar(start), 1_000)
   t.deepEqual(O.decode(memory, start), {...expected, foo:10, bar:1_000, })
+//  var len = O.encodedLength(memory, start)
+  //the schema used doesn't have a length field so encodedLength returns undefined
+  //but it's a few bytes shorter than 48
+  var len = 48
+  console.log(memory.slice(start, start+len))
+//  wasm.encoded_length__basic
+  //a c style nul delimited string
+  var cstring = start+len
+  var string_u8 = start+len+8
+  memory.write('HELLO\x00', cstring, 'utf8')
+
+  wasm.encode__string_u8(string_u8, cstring, 5)
+  t.equal(wasm.decode__length__string_u8(string_u8), 5)
+  console.log(memory.slice(string_u8, string_u8+1+5))
+  console.log(decode_string(string_u8))
   t.end()
 })
 
