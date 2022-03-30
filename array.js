@@ -1,6 +1,6 @@
-var {getMinimumSize, assertNonOverlapping, encodeField, decodeField} = require('./utils')
+var {encodeField, decodeField} = require('./utils')
 
-function ArrayCodec (length_c, direct_c, pointed_c=null, isNullable=(pointed_c != null)) {
+function ArrayCodec (length_c, direct_c, pointed_c=null, _isNullable = (pointed_c != null)) {
   //the minimum size is the length used to encode 0
   var empty_size = length_c.bytes
   //note. pointed_codec is optional.
@@ -58,7 +58,7 @@ function ArrayCodec (length_c, direct_c, pointed_c=null, isNullable=(pointed_c !
   //so... we need a method to return the codec at an index.
   //an array should always use one field type.
   //...and the length isn't addressable.
-  //in this case, 
+  //in this case,
 
   function reflect (_) {
     return pointed_c ? pointed_c : direct_c
