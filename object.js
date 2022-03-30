@@ -1,11 +1,12 @@
 'use strict'
-var {getMinimumSize, assertNonOverlapping, encodeField, decodeField, isFixedSize} = require('./utils')
+var { getMinimumSize, assertNonOverlapping, encodeField, decodeField } = require('./utils')
 
 function ObjectCodec(schema) {
   assertNonOverlapping(schema)
   var min = getMinimumSize(schema)
 
   var fields = 0, fixed_fields = 0, variable_fields = 0, variable_field, length_field
+
   for(var i in schema) {
     fields ++
     if(!schema[i].pointed) { fixed_fields ++ }
@@ -20,7 +21,7 @@ function ObjectCodec(schema) {
       length_field = schema[i]
   }
 
-  function encode (obj, buffer, start, end) {
+  function encode (obj, buffer, start, _end) {
     var free = min
     if(isNaN(free)) throw new Error('min size was nan')
     for(var i = 0; i < schema.length; i++) {
@@ -37,7 +38,7 @@ function ObjectCodec(schema) {
       var field = schema[0]
       encodeField(field.position, field.direct, null, free, buffer, start)
     }
-    
+
     //if this was encoded as a pointed field
     //we need to know how far the free pointer has moved.
     //hmm, encodeField returns only the pointed bytes used

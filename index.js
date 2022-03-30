@@ -1,8 +1,9 @@
 var codex = require('./codex')
-var {drill,
-  isFixedSize, 
+var {
+  drill,
+  isFixedSize,
   Field, LengthField, isNonOverlapping, assertFixedSize, getMinimumSize,
-DirectField, PointedField, LengthField,  Constant
+  DirectField, PointedField, LengthField
 } = require('./utils')
 var ObjectCodec = require('./object')
 var ArrayCodec = require('./array')
