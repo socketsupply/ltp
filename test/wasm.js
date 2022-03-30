@@ -101,6 +101,22 @@ tape('read via generated apis', function (t) {
   t.end()
 })
 //*/
+var expected2 = {foo: 1, bar: 1234, name: 'Hello, World!'} 
+
+var S = ltp.ObjectCodec([
+  ltp.DirectField('foo', 0, ltp.codex.u8),
+  ltp.DirectField('bar', 1, ltp.codex.u32),
+  ltp.PointedField('name', 5, ltp.codex.u8, ltp.codex.string_u8)
+])
+
+
+tape('encodedLength', function (t) {
+
+  //note, endodedLength on schema S, which doesn't have the list
+  //so the list bytes are ignored so the length is shorter.
+  t.equal(S.encodedLength(memory, start), 21)
+  t.end()
+})
 
 tape('encode via C', function (t) {
 
@@ -122,11 +138,54 @@ tape('encode via C', function (t) {
 
   wasm.encode__string_u8(string_u8, cstring, 5)
   t.equal(wasm.decode__length__string_u8(string_u8), 5)
+
   console.log(memory.slice(string_u8, string_u8+1+5))
   console.log(decode_string(string_u8))
 
   wasm.encode__basic_name(start, string_u8)
 
+  t.equal(O.decode(memory, start).name, 'HELLO')
+  t.end()
+})
+
+tape('encode via C & compact', function (t) {
+
+  wasm.encode__simpler_foo(start, 10)
+  wasm.encode__simpler_bar(start, 1_000)
+  t.equal(wasm.decode__simpler_foo(start), 10)
+  t.equal(wasm.decode__simpler_bar(start), 1_000)
+
+  t.deepEqual(S.decode(memory, start), {...expected2, foo:10, bar:1_000, name: "HELLO"})
+
+  // since we updated the message in previous test,
+  // it's now somewhat greater than 15.
+  t.ok(S.encodedLength(memory, start) > 15)
+  console.log(S.decode(memory, start), S.decode.bytes)
+//  return t.end()
+//  console.log("slice", memory.slice(start, start+S.encodedLength(memory, start)).toString('hex'))
+//  var len = O.encodedLength(memory, start)
+  //the schema used doesn't have a length field so encodedLength returns undefined
+  //but it's a few bytes shorter than 48
+  var len = 48
+  //  wasm.encoded_length__basic
+  //a c style nul delimited string
+  var cstring = start+len
+  var string_u8 = start+len+8
+  memory.write('HELLO\x00', cstring, 'utf8')
+
+  wasm.encode__string_u8(string_u8, cstring, 5)
+  t.equal(wasm.decode__length__string_u8(string_u8), 5)
+
+  console.log(memory.slice(string_u8, string_u8+1+5))
+  console.log(decode_string(string_u8))
+
+  wasm.encode__basic_name(start, string_u8)
+
+  var _buffer = S.compact(memory, start)
+  console.log(_buffer)
+  console.log(S.decode(_buffer, 0))
+  t.equal(S.encodedLength(_buffer, 0), 12)
+  
   t.equal(O.decode(memory, start).name, 'HELLO')
   t.end()
 })
