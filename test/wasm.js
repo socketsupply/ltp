@@ -148,6 +148,8 @@ tape('encode via C', function (t) {
   t.end()
 })
 
+var expected3 = {foo:10, bar:1_000, name: "HELLO"}
+
 tape('encode via C & compact', function (t) {
 
   wasm.encode__simpler_foo(start, 10)
@@ -155,7 +157,7 @@ tape('encode via C & compact', function (t) {
   t.equal(wasm.decode__simpler_foo(start), 10)
   t.equal(wasm.decode__simpler_bar(start), 1_000)
 
-  t.deepEqual(S.decode(memory, start), {...expected2, foo:10, bar:1_000, name: "HELLO"})
+  t.deepEqual(S.decode(memory, start), expected3)
 
   // since we updated the message in previous test,
   // it's now somewhat greater than 15.
@@ -182,11 +184,8 @@ tape('encode via C & compact', function (t) {
   wasm.encode__basic_name(start, string_u8)
 
   var _buffer = S.compact(memory, start)
-  console.log(_buffer)
-  console.log(S.decode(_buffer, 0))
-  t.equal(S.encodedLength(_buffer, 0), 12)
-  
-  t.equal(O.decode(memory, start).name, 'HELLO')
+  t.equal(S.encodedLength(_buffer, 0), 12) // 1 + 4 + 1 + 1 + 5
+  t.deepEqual(S.decode(_buffer, 0), expected3)
   t.end()
 })
 
