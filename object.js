@@ -20,13 +20,14 @@ function ObjectCodec(schema) {
       length_field = schema[i]
   }
 
-  function encode (obj, buffer, start, end) {
+  function encode (obj, buffer=Buffer.alloc(encodingLength(obj)), start=0, end=buffer.length) {
     var free = min
     if(isNaN(free)) throw new Error('min size was nan')
     for(var i = 0; i < schema.length; i++) {
       var field = schema[i]
       if(!field.isLength) {
         var value = obj[field.name]
+        console.log(obj, value, field.name)
         free += encodeField(field.position, field.direct, field.pointed, value, buffer, start, free)
         if(isNaN(free)) throw new Error('free was nan after field:'+i)
       }
@@ -44,9 +45,10 @@ function ObjectCodec(schema) {
     //not the direct bytes, but that's an private interface.
     //other encoders
     encode.bytes = free
+    return buffer
   }
 
-  function decode (buffer, start, end=buffer.length) {
+  function decode (buffer, start=0, end=buffer.length) {
     end = Math.min(end, buffer.length)
     var a = {} //new Array(schema.length)
 
@@ -95,6 +97,7 @@ function ObjectCodec(schema) {
       return start + position //return pointer to direct value
     else {
       var relp = field.direct.decode(buffer, start + position)
+      console.log('deref', start, position, relp)
       if(relp === 0) return -1
       return (start + position) + relp
     }
@@ -122,18 +125,69 @@ function ObjectCodec(schema) {
   }
 
   function encodedLength (buffer, start, end=buffer.length) {
+    console.log('encodedLength', variable_fields, length_field)
     if(variable_fields === 0) return min
     else if(length_field) return decodeField(length_field.position, length_field.direct, null, buffer, start, end)
-    else if(variable_fields === 1) {
+    else if(variable_fields === 1 && variable_field.direct == null) {
       return min + variable_field.pointed.encodedLength(buffer, start+variable_field.position)
     }
+    else {
+      //without an explicit length field, check which pointed field
+      var max = min
+      var max_f = null
+      for(var i = 0; i < schema.length; i++) {
+        var field = schema[i]
+        if(field.pointed) {
+          var ptr = dereference(buffer, start, i)
+          var len = field.pointed.encodedLength(buffer, ptr)
+          console.log('field', i, field.position, ptr+len - start)
+          var field_end = ptr + len
+          if(max < (field_end-start)) {
+            max = field_end-start
+            max_f = i
+          }
+        }
+      }
+      return max
+    }
+  }
+
+  //compact takes an object that maybe has padding or points to far away objects
+  //(this might happen because fields have been updated to point to new values)
+  function compact(buffer, start, _buffer, _start) {
+    if(!_buffer) {
+        var total = min
+        for(var i = 0; i < schema.length; i++) {
+          var field = schema[i]
+          if(field.pointed) {
+            total += field.pointed.encodedLength(buffer, dereference(buffer, start, i)) 
+          }
+        }
+        _buffer = Buffer.alloc(total), _start = 0
+      }
+//      else
+    var free = min
+    for(var i = 0; i < schema.length; i++) {
+      var field = schema[i]
+      if(field.pointed) {
+        var ptr = dereference(buffer, start, i)
+        var len = field.pointed.encodedLength(buffer, ptr)
+        buffer.copy(_buffer, free, ptr, ptr+len)
+        field.direct.encode(free - field.position, _buffer, field.position+_start)
+        free += len
+      }
+      else {
+        field.direct.encode(field.direct.decode(buffer, start+field.position), _buffer, field.position)
+      }
+    }
+    return _buffer
   }
 
   return {
     type:'object',
     encode, decode, dereference, reflect, encodingLength,//, encodedLength
     bytes: variable_fields === 0 ? min : null,
-    encodedLength
+    encodedLength, compact
   }
 }
 
