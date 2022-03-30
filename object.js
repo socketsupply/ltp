@@ -97,7 +97,6 @@ function ObjectCodec(schema) {
       return start + position //return pointer to direct value
     else {
       var relp = field.direct.decode(buffer, start + position)
-      console.log('deref', start, position, relp)
       if(relp === 0) return -1
       return (start + position) + relp
     }
@@ -125,7 +124,6 @@ function ObjectCodec(schema) {
   }
 
   function encodedLength (buffer, start, end=buffer.length) {
-    console.log('encodedLength', variable_fields, length_field)
     if(variable_fields === 0) return min
     else if(length_field) return decodeField(length_field.position, length_field.direct, null, buffer, start, end)
     else if(variable_fields === 1 && variable_field.direct == null) {
@@ -140,7 +138,6 @@ function ObjectCodec(schema) {
         if(field.pointed) {
           var ptr = dereference(buffer, start, i)
           var len = field.pointed.encodedLength(buffer, ptr)
-          console.log('field', i, field.position, ptr+len - start)
           var field_end = ptr + len
           if(max < (field_end-start)) {
             max = field_end-start
