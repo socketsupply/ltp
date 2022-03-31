@@ -162,7 +162,6 @@ function ObjectCodec(schema) {
         }
         _buffer = Buffer.alloc(total), _start = 0
       }
-//      else
     var free = min
     for(var i = 0; i < schema.length; i++) {
       var field = schema[i]
@@ -177,6 +176,9 @@ function ObjectCodec(schema) {
         field.direct.encode(field.direct.decode(buffer, start+field.position), _buffer, field.position)
       }
     }
+    //if input buffer was provided it would be more useful to return `free`
+    //could return {length: free} so either way {length} = compact(...)
+    //is the length.
     return _buffer
   }
 
