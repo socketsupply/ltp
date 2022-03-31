@@ -19,10 +19,18 @@ function generateObjectCodec (name, schema) {
       // for_each__<schema>_<field>(buf, each)
     }
 
-    var {type, direct, pointed, name, position} = field
+    var {type, direct, pointed, position} = field
     if(direct && !pointed) {
-      s += (`${direct.type} ${decode(field)} (byte* buf) {\n  return decode__${direct.type}((byte*)(buf+${position})); \n}\n`)
-      s += (`void ${encode(field)} (byte* buf, ${direct.type} v_${name}) {\n  encode__${direct.type}((byte*)(buf+${position}), v_${name}); \n}\n`)     
+      s += (`
+${direct.type} ${decode(field)} (byte* buf) {
+  return decode__${direct.type}((byte*)(buf+${position}));
+}
+`)
+      s += (`
+void ${encode(field)} (byte* buf, ${direct.type} v_${field.name}) {
+  encode__${direct.type}((byte*)(buf+${position}), v_${field.name});
+}
+`)     
 
       args.push(`${direct.type} v_${field.name}`)
       ops.push(`${encode(field)}(buf, v_${field.name})`)
@@ -30,18 +38,33 @@ function generateObjectCodec (name, schema) {
 
     else if(direct && pointed) {
       //returns a pointer to the field type 
-     s += (`${pointed.type}* ${decode(field)} (byte* buf) {\n  return (${pointed.type}*)decode_relp__${direct.type}(buf+${field.position}); \n}\n`)
-      s += (`void ${encode(field)} (byte* buf, ${pointed.type}* v_${name}) {\n  encode_relp__${field.direct.type}(buf+${position}, v_${name});\n}\n`)
+      //decode_${name}_${field.name} function returns a pointer to the input type.
+     s +=(`
+${pointed.type}* ${decode(field)} (byte* buf) {
+  return (${pointed.type}*)decode_relp__${direct.type}(buf+${field.position});
+}
+`)
+      s += (`
+void ${encode(field)} (byte* buf, ${pointed.type}* v_${field.name}) {
+  encode_relp__${field.direct.type}(buf+${position}, v_${field.name});
+}
+`)
 
-      args.push(`${field.pointed.type}* v_${name}`)
-      ops.push(`${encode(field)}(buf, v_${name})`)
+      args.push(`${field.pointed.type}* v_${field.name}`)
+      ops.push(`${encode(field)}(buf, v_${field.name})`)
 
     }
     else if(!field.direct && field.pointed)
-      s += (`${pointed.type}* ${decode(field)} (byte* buf) {\n  return (${pointed.type})(buf+${field.position}); \n}\n`)
+      s += (`
+${pointed.type}* ${decode(field)} (byte* buf) {
+    return (${pointed.type})(buf+${field.position});
+}`)
   })
 
-  s += `void encode__${name} (byte* buf, ${args.join(', ')}) {\n  ${ops.map(e=>e+';').join('\n  ')} \n}\n`
+  s += `
+void encode__${name} (byte* buf, ${args.join(', ')}) {
+  ${ops.map(e=>e+';').join('\n  ')}
+}`
 
   return s + '\n'
 
