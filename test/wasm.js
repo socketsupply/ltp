@@ -189,6 +189,20 @@ tape('encode via C & compact', function (t) {
   t.end()
 })
 
+tape('single encode call', function (t) {
+  var start2 = start+100
+  var cstring2
+  var string = 'HI THERE\x00'
+  start2 += memory.write(string, cstring2=start2, 'utf8')
+  console.log('hi there', memory.slice(cstring2, cstring2+10))
+  t.equal(wasm.strlen(cstring2), string.length-1, "correct string length")
+  console.log(wasm.strlen(cstring2))
+  var bytes = wasm.encode__simpler(start2, 100, 1000, cstring2)
+  console.log(memory.slice(start2, start2+32))
+  console.log(bytes)
+  t.deepEqual(S.decode(memory, start2), {foo: 100, bar: 1000, name: 'HI THERE'})
+  t.end()
+})
 
 // no this isn't that interesting,
 // bigger question is how to encode
