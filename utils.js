@@ -76,13 +76,27 @@ function LengthField (name, position, direct) {
 //note, a single variable sized direct field is allowed,
 //because it always starts at the same position.
 
+var sizes = {
+  u8: 1, u16: 2, u32: 4, u64:8,
+  i8: 1, i16: 2, i32: 4, i64:8,
+  f32: 4, f64: 8,
+}
+
+function sizeOf(codec) {
+  if('number' === typeof codec.bytes)
+    return codec.bytes
+  if('string' === typeof codec.type && sizes[codec.type])
+    return sizes[codec.type]
+  throw new Error('codec must be fixed size')
+}
+
 function getMinimumSize(schema) {
   if(!schema.length) return 0 //or should an empty schema be a throw?
   var size = 0, fpvs = null
   for(var i = 0; i < schema.length; i++) {
     var field = schema[i]
     if(field.direct)
-      size = Math.max(size, field.position + field.direct.bytes)
+      size = Math.max(size, field.position + sizeOf(field.direct))
     else
       fpvs = field
   }
