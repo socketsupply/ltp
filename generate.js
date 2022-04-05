@@ -1,7 +1,19 @@
 var path = require('path')
+var ltp = require('./')
 
-function generateObjectCodec (name, schema) {
+var sizes = {
+  u8: 1, u16: 2, u32: 4, u64:8
+}
+
+function generateObjectCodec (name, schema, map) {
   var s = ''
+  schema.forEach(e=>{
+    if(e.direct && e.direct.byte == null && sizes[e.direct.type]) {
+      e.direct.bytes = sizes[e.direct.type]
+    }
+  })
+  var min = ltp.getMinimumSize(schema)
+  if(isNaN(min)) throw new Error('expected integer for minimum size, got NaN')
   function decode(field, decoder) {
     return `decode__${name}_${field.name}`
   }
@@ -20,6 +32,7 @@ function generateObjectCodec (name, schema) {
     }
 
     var {type, direct, pointed, position} = field
+    var v_name = `v_${field.name}`
     if(direct && !pointed) {
       s += (`
 ${direct.type} ${decode(field)} (byte* buf) {
@@ -27,12 +40,12 @@ ${direct.type} ${decode(field)} (byte* buf) {
 }
 `)
       s += (`
-void ${encode(field)} (byte* buf, ${direct.type} v_${field.name}) {
-  encode__${direct.type}((byte*)(buf+${position}), v_${field.name});
+void ${encode(field)} (byte* buf, ${direct.type} ${v_name}) {
+  encode__${direct.type}((byte*)(buf+${position}), ${v_name});
 }
 `)     
 
-      args.push(`${direct.type} v_${field.name}`)
+      args.push(`${direct.type} ${v_name}`)
       ops.push(`${encode(field)}(buf, v_${field.name})`)
     }
 
@@ -45,30 +58,45 @@ ${pointed.type}* ${decode(field)} (byte* buf) {
 }
 `)
       s += (`
-void ${encode(field)} (byte* buf, ${pointed.type}* v_${field.name}) {
-  encode_relp__${field.direct.type}(buf+${position}, v_${field.name});
-}
-`)
+void ${encode(field)} (byte* buf, ${pointed.type}* ${v_name}) {
+  encode_relp__${direct.type}(buf+${position}, ${v_name});
+}`)
+      args.push(`${pointed.type}* v_${field.name}`)
+      ops.push(`${encode(field)}(buf, v_${field.name})`)
+    }
+    else if(!direct && pointed) {
 
       args.push(`${field.pointed.type}* v_${field.name}`)
-      ops.push(`${encode(field)}(buf, v_${field.name})`)
+      ops.push(`free += ${encode(field)}(buf, v_${field.name}, free)`)
 
     }
-    else if(!field.direct && field.pointed)
-      s += (`
-${pointed.type}* ${decode(field)} (byte* buf) {
-    return (${pointed.type})(buf+${field.position});
-}`)
+    //note, this sort of encode function, must copy another type data in.
+    //would be best to return the bytes used (or, new pointer to next free space)
+    //abstract-encoding returns the buffer, enabling allocating the buffer but that's not a great usecase) 
+
+
+    if(pointed === ltp.string_u8) {
+        s == (`
+  size_t ${encode(field)}_cstring (byte* buf, char* ${v_name}, byte* free) {
+  u32 len = strlen(${v_name});
+  encode__string_u8(free, ${v_name}, len);
+  encode__relp__u8(buf+${field.positon}, free);
+  return len + 1;
+}
+`)
+    }
   })
 
+
+  //a single encode function to get the entire object
   s += `
-void encode__${name} (byte* buf, ${args.join(', ')}) {
+size_t encode__${name} (byte* buf, ${args.join(', ')}) {
+  byte* free = buf+${min};
   ${ops.map(e=>e+';').join('\n  ')}
+  return (size_t)(free - buf); 
 }`
 
   return s + '\n'
-
-
 }
 
 module.exports = function (schemas) {
