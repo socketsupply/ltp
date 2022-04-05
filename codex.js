@@ -52,10 +52,12 @@ var string = {
   encode: (value, buffer, start) => {
     var bytes = Buffer.byteLength(value)
     buffer.write(value, start, start+bytes)
-    string.encode.bytes = bytes
+    buffer[start+bytes+1] = 0
+    string.encode.bytes = bytes+1
   },
   decode: (buffer, start, end) => {
-    var value = buffer.toString('utf8', start, end)
+    console.log('string.decode', buffer.slice(start, end))
+    var value = buffer.toString('utf8', start, end-1)
     string.decode.bytes = end - start
     return value
   },

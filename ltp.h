@@ -25,6 +25,18 @@ typedef byte array_u32;
 #define bytes_i32 4
 #define bytes_i64 8
 
+void _memcpy (byte* a, byte* b, u32 length) {
+  for(u32 i = 0; i < length; i++)
+    *(byte*)(b+i) = *(a+i);
+}
+
+int strlen (char* c) {
+  int i = 0;
+  //return *c
+  while(0 != *(char*)(c+i)) i++;
+  return i;
+}
+
 
 //*/
 
@@ -64,9 +76,11 @@ typedef struct {
 } array_u32;
 //*/
 
+#define size_t int
+
 #define encode_decode_int(INT_TYPE) \
   int decode__##INT_TYPE (byte* buf) { return (int)*(INT_TYPE*)(buf); } \
-  void encode__##INT_TYPE (byte* buf, INT_TYPE val) { *(INT_TYPE*)buf = val; }
+  size_t encode__##INT_TYPE (byte* buf, INT_TYPE val) { *(INT_TYPE*)buf = val; return sizeof(INT_TYPE); }
 
 //decode_repl takes a pointer, reads the relp from it, and returns a new pointer.
 //encode_repl, takes two pointers. one is where the relp is stored, the other is what it points to.
@@ -76,8 +90,9 @@ typedef struct {
     INT_TYPE v = decode__##INT_TYPE(buf); \
     return (byte*)(v == 0 ? 0 : buf + v) ; \
   } \
-  void encode_relp__##INT_TYPE (byte* relp, byte* target) { \
+  size_t encode_relp__##INT_TYPE (byte* relp, byte* target) { \
     *(INT_TYPE*)relp = (INT_TYPE)(target - relp); \
+    return sizeof(INT_TYPE); \
    }
 
 encode_decode_int(u8)
@@ -97,20 +112,35 @@ encode_decode_relp(u64)
 //do we want signed relative pointers?
 //it's needed to have cyclic objects.
 
-
-//int decode_string_length__u32 (byte* buf) {
-//  return decode__u32(buf);
-//}
 byte* decode_string__u32 (byte* buf) {
   return (byte*)(buf + sizeof(u32));
 }
 
-int decode__length__string_u8 (byte* buf) {
-  return decode__u8(buf);
+
+
+//decode__length. checks that length actually points at 0 byte
+// returns -1 if not, otherwise returns the length.
+int decode__length__string_u8 (byte * buf) {
+  int length = decode__u8(buf);
+  if(0 == decode__u8(buf+sizeof(u8)+length)) return -1;
+  return length;
 }
+
+//check the length, if it's valid return pointer to string, else return null pointer.
 byte* decode__string_u8 (byte* buf) {
-  return (byte*)(buf + sizeof(u8));
+  int length = decode__length__string_u8(buf);
+  if(~length)
+    return (byte*)(buf + sizeof(u8));
 }
+
+//length includes the null at the end of the string
+size_t encode__string_u8 (byte* buf, char *string) {
+  int string_length = strlen(string)+1;
+  encode__u8(buf, string_length);
+  _memcpy((byte*)string, buf+bytes_u8, (u32)string_length);
+  return (size_t)(bytes_u8 + string_length);
+}
+
 
 /*
 byte* decode_relp__u8 (byte* buf) {
@@ -182,16 +212,6 @@ int array_index_of__u8(byte* ary, byte* target, equality_test fn ) {
 
 int array_index_of__string_u8(byte* ary, byte* target) {
   return array_index_of__u8(ary, target, equals__addr);
-}
-
-void _memcpy (byte* a, byte* b, u32 length) {
-  for(u32 i = 0; i < length; i++)
-    *(byte*)(b+i) = *(a+i);
-}
-
-void encode__string_u8 (byte* buf, char *string, u32 string_length) {
-  encode__u8(buf, string_length);
-  _memcpy((byte*)string, buf+bytes_u8, string_length);
 }
 
 // ----------------- ENCODE ----

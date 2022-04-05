@@ -1,17 +1,8 @@
 var path = require('path')
 var ltp = require('./')
 
-var sizes = {
-  u8: 1, u16: 2, u32: 4, u64:8
-}
-
 function generateObjectCodec (name, schema, map) {
   var s = ''
-  schema.forEach(e=>{
-    if(e.direct && e.direct.byte == null && sizes[e.direct.type]) {
-      e.direct.bytes = sizes[e.direct.type]
-    }
-  })
   var min = ltp.getMinimumSize(schema)
   if(isNaN(min)) throw new Error('expected integer for minimum size, got NaN')
   function decode(field, decoder) {
@@ -58,11 +49,12 @@ ${pointed.type}* ${decode(field)} (byte* buf) {
 }
 `)
       s += (`
-void ${encode(field)} (byte* buf, ${pointed.type}* ${v_name}) {
-  encode_relp__${direct.type}(buf+${position}, ${v_name});
+size_t ${encode(field)} (byte* buf, ${pointed.type}* ${v_name}, byte* free) {
+  encode_relp__${direct.type}(buf+${position}, free);
+  return encode__string_u8(free, ${v_name});
 }`)
       args.push(`${pointed.type}* v_${field.name}`)
-      ops.push(`${encode(field)}(buf, v_${field.name})`)
+      ops.push(`free += ${encode(field)}(buf, v_${field.name}, free)`)
     }
     else if(!direct && pointed) {
 
