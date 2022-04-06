@@ -203,15 +203,3 @@ tape('single encode call', function (t) {
   t.deepEqual(S.decode(memory, start2), {foo: 100, bar: 1000, name: 'HI THERE'})
   t.end()
 })
-
-// no this isn't that interesting,
-// bigger question is how to encode
-/*
-tape('same as bipf benchmark', function (t) {
-  wasm.map__get__string_u8(
-    wasm.decode__package_dependencies,
-    Varint
-  )
-  t.end()
-})
-*/

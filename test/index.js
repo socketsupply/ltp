@@ -49,6 +49,21 @@ tape('encode decode a single byte', function (t) {
   t.end()  
 })
 
+tape('strings', function (t) {
+  var strings = ['hello', 'HI', ""]
+  strings.forEach(function (string) {
+    for(var k in ltp.codex) {
+      if(/string_/.test(k)) {
+        var codec = ltp.codex[k]
+        var b = Buffer.alloc(codec.encodingLength(string))
+        codec.encode(string, b, 0)
+        t.equal(codec.decode(b, 0), string)
+    }}
+  })
+  t.end()
+})
+//return
+
 tape('encode decode three values', function (t) {
 
   var size = 7
@@ -65,7 +80,7 @@ tape('encode decode three values', function (t) {
 tape('encode/decode rel pointers', function (t) {
 
   var expected = {hello: 'hello world!!!', goodbye: 'whatever'}
-  var size = 4+4+14+4+4+8
+  var size = 4+4+14+4+4+8+1+1
 //  t.equal(ltp.getMinimumSize(schema), 8)
 
   var b = Buffer.alloc(size)
@@ -83,7 +98,7 @@ tape('encode/decode rel pointers', function (t) {
 
 tape('object with length delimiter around it', function (t) {
   var expected = {hello: 'hello world!!!', goodbye: 'whatever'}
-  var size =  4 + 4+4 + 14 + 4+4 + 8
+  var size =  4 + 4+4 + 14+1 + 4+4 + 8+1
   t.equal(embed.encodingLength(expected), size)
 
   var b = Buffer.alloc(size)
@@ -107,7 +122,7 @@ tape('object embedded in another object', function (t) {
 
   var expected = {number: 7, object: {hello: 'hello world!!!', goodbye: 'whatever'}}
 
-  var size =  4 + 4 + 4 + 4+4 + 14 + 4+4 + 8
+  var size =  4 + 4 + 4 + 4+4 + 14+1 + 4+4 + 8+1
   t.equal(container.encodingLength(expected), size)
 
   var b = Buffer.alloc(size)
@@ -147,7 +162,7 @@ tape('array inside object', function (t) {
 tape('dereference pointer to specific direct field', function (t) {
 
   var expected = {u8:1, u16:1000, string: 'hello'}
-  var b = Buffer.alloc(1+2+ 4+4+5)
+  var b = Buffer.alloc(1+2+ 4+4+5+1)
   object_string.encode(expected, b, 0)
   var p = object_string.dereference(b, 0, 1)
   t.equal(ltp.codex.u16.decode(b, p), expected.u16)
@@ -168,7 +183,7 @@ tape('decode nested field', function (t) {
   ])
 
   var expected = {number:7, number2:13, object: {hello:'hello world!!!', goodbye: 'whatever'}}
-  var size =  4 + 4 + 4 + 4+4 + 14 + 4+4 + 8
+  var size =  4 + 4 + 4 + 4+4 + 14+1 + 4+4 + 8+1
   t.equal(container_codec.encodingLength(expected), size)
 
   var b = Buffer.alloc(size)
@@ -186,7 +201,7 @@ tape('automatic length field', function (t) {
     ltp.Field('goodbye', 5, ltp.codex.u32, ltp.codex.string_u32)
   ])
 
-  var size = 1+ 4+4 +4+5 +4+7
+  var size = 1+ 4+4 +4+5+1 +4+7+1
   var expected = {length:size, hello:'hello', goodbye:'goodbye'}
   t.equal(length_codec.encodingLength(expected), size)
   var b = Buffer.alloc(size)
@@ -236,14 +251,14 @@ tape('nullable fields, objects', function (t) {
   ])
 
   var expected = {length: 0, goodbye:'GB'}
-  var size = 1 + 1 + 1 + 1 + 2
+  var size = 1 + 1 + 1 + 1 + 2 + 1
 
   t.equal(nf_codec.encodingLength(expected), size)
   var b = Buffer.alloc(size)
   nf_codec.encode(expected, b, 0)
 
   //output will always include the null fields explicitly.
-  t.deepEqual(nf_codec.decode(b, 0), {...expected, length: 6, hello: null})
+  t.deepEqual(nf_codec.decode(b, 0), {...expected, length: 7, hello: null})
   t.end()
 })
 
@@ -252,7 +267,7 @@ tape('nullable fields, arrays', function (t) {
   var nfa_codec = ltp.ArrayCodec(ltp.codex.u8, ltp.codex.u8, ltp.codex.string_u8, true)
 
   var expected = ['hello', , 'goodbye']
-  var size = 1 + 3 + 1 + 5 + 1 + 7
+  var size = 1 + 3 + 1 + 5+1 + 1 + 7+1
 
   t.equal(nfa_codec.encodingLength(expected), size)
   var b = Buffer.alloc(size)
@@ -319,18 +334,18 @@ tape('handle invalid fields out of bounds', function (t) {
   var b = Buffer.alloc(size)
   codec.encode({hello: 'hi'}, b, 0)
   console.log(b) // [length, relp, length, 'h' 'i']
-  t.deepEqual(codec.decode(b, 0), {length: 5, hello: 'hi'})
+  t.deepEqual(codec.decode(b, 0), {length: 6, hello: 'hi'})
 
   var string_length = {message: /string length out of bounds/}
   var relative_pointer  = {message: /relative pointer out of bounds/}
   var length_field = {message: /length field out of bounds/}
 
-  var b2 = Buffer.from(b); b2[2] = 3
-  t.throws(()=> codec.decode(b2, 0, 5), string_length) //because incorrect length of hello
-  var b3 = Buffer.from(b); b3[1] = 4
-  t.throws(()=> codec.decode(b3, 0, 5), relative_pointer) //because relative pointer points outside of end
-  var b4 = Buffer.from(b); b4[0] = 6
-  t.throws(()=> codec.decode(b4, 0, 5), length_field) //because length field is greater outside of end (smaller would be okay)
+  var b2 = Buffer.from(b); b2[2] = b2[2]+1
+  t.throws(()=> codec.decode(b2, 0, 6), string_length) //because incorrect length of hello
+  var b3 = Buffer.from(b); b3[1] = (size-1)
+  t.throws(()=> codec.decode(b3, 0, 6), relative_pointer) //because relative pointer points outside of end
+  var b4 = Buffer.from(b); b4[0] = b4[0]+1
+  t.throws(()=> codec.decode(b4, 0, 6), length_field) //because length field is greater outside of end (smaller would be okay)
 
   //because there is a defined length field,
   //ObjectCodec#decode will read that and pass to all methods underneath
@@ -358,24 +373,24 @@ tape('handle invalid fields out of bounds, array', function (t) {
   var string_length = {message: /string length out of bounds/}
   var relative_pointer  = {message: /relative pointer out of bounds/}
   var array_length  = {message: /array length out of bounds/}
-  var b2 = Buffer.from(b); b2[6] = 4
-  t.throws(()=> { codec.decode(b2, 0, 10) }, string_length) //incorrect length of 'bye'
+  var b2 = Buffer.from(b); b2[7] = b2[7]+1
+  t.throws(()=> { codec.decode(b2, 0, size) }, string_length) //incorrect length of 'bye'
 
   var b3 = Buffer.from(b); b3[3] = 7
-  t.throws(()=> { codec.decode(b3, 0, 10) }, string_length) //incorrect length of 'hi'
+  t.throws(()=> { codec.decode(b3, 0, size) }, string_length) //incorrect length of 'hi'
 
   //actually not invalid, because it still fits inside end.
   //checking a particular field overflows into other fields
   //but not outside the object is too complicated.
   //however, since it's still inside the attacker controlled data
   //it's not dangerous compared to reading arbitary memory
-  var b4 = Buffer.from(b); b4[3] = 6
-  console.log(codec.decode(b4, 0, 10))
+  var b4 = Buffer.from(b); b4[3] = 8 //b4[3] // 'hi\x00\x04bye'
+  console.log(codec.decode(b4, 0, size))
 
   var b5 = Buffer.from(b); b5[2] = 8
-  t.throws(()=> codec.decode(b5, 0, 10), relative_pointer) //incorrect rel pointer
+  t.throws(()=> codec.decode(b5, 0, size), relative_pointer) //incorrect rel pointer
   var b6 = Buffer.from(b); b6[1] = 9
-  t.throws(()=> codec.decode(b6, 0, 10) , relative_pointer) //incorrect rel pointer
+  t.throws(()=> codec.decode(b6, 0, size) , relative_pointer) //incorrect rel pointer
   console.log('array length out of bounds')
   var b7 = Buffer.from(b); b7[0] = 10
   t.throws(()=>

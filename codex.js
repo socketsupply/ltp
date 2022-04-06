@@ -56,16 +56,18 @@ var string = {
     string.encode.bytes = bytes+1
   },
   decode: (buffer, start, end) => {
-    console.log('string.decode', buffer.slice(start, end))
-    var value = buffer.toString('utf8', start, end-1)
+    var terminal = end-1
+    if(buffer[terminal] != 0)
+      throw new Error('invalid string termination:' +buffer[terminal]+' (0x'+buffer[terminal].toString(16)+'), at:'+(terminal-start)) 
+    var value = buffer.toString('utf8', start, terminal)
     string.decode.bytes = end - start
     return value
   },
-  encodingLength: (value) => Buffer.byteLength(value, 'utf8')
+  encodingLength: (value) => Buffer.byteLength(value, 'utf8') + 1
 }
 
-codex.string_u8 = LengthDelimited(0x10, codex.u8, string)
-codex.string_u16 = LengthDelimited(0x10, codex.u16, string)
-codex.string_u32 = LengthDelimited(0x10, codex.u32, string)
+codex.string_u8 = LengthDelimited(0, codex.u8, string)
+codex.string_u16 = LengthDelimited(0, codex.u16, string)
+codex.string_u32 = LengthDelimited(0, codex.u32, string)
 //codex.string_u64 = LengthDelimited(0x10, codex.64, string)
 module.exports = codex
