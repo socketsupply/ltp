@@ -376,7 +376,7 @@ tape('handle invalid fields out of bounds, array', function (t) {
   var b2 = Buffer.from(b); b2[7] = b2[7]+1
   t.throws(()=> { codec.decode(b2, 0, size) }, string_length) //incorrect length of 'bye'
 
-  var b3 = Buffer.from(b); b3[3] = 7
+  var b3 = Buffer.from(b); b3[3] = 9
   t.throws(()=> { codec.decode(b3, 0, size) }, string_length) //incorrect length of 'hi'
 
   //actually not invalid, because it still fits inside end.
@@ -385,11 +385,12 @@ tape('handle invalid fields out of bounds, array', function (t) {
   //however, since it's still inside the attacker controlled data
   //it's not dangerous compared to reading arbitary memory
   var b4 = Buffer.from(b); b4[3] = 8 //b4[3] // 'hi\x00\x04bye'
-  console.log(codec.decode(b4, 0, size))
 
-  var b5 = Buffer.from(b); b5[2] = 8
+  console.log(codec.decode(b4, 0, size)) //['hi\x00\x04bye', 'bye']
+  t.deepEqual(codec.decode(b4, 0, size), ['hi\x00\x04bye', 'bye'])
+  var b5 = Buffer.from(b); b5[2] = 10
   t.throws(()=> codec.decode(b5, 0, size), relative_pointer) //incorrect rel pointer
-  var b6 = Buffer.from(b); b6[1] = 9
+  var b6 = Buffer.from(b); b6[1] = 11
   t.throws(()=> codec.decode(b6, 0, size) , relative_pointer) //incorrect rel pointer
   console.log('array length out of bounds')
   var b7 = Buffer.from(b); b7[0] = 10
@@ -420,16 +421,16 @@ tape('encode field that\'s too large to be expressed by length type', function (
   var l = 256
   var xs = Buffer.alloc(l).fill('x').toString()
   console.log(xs)
-  t.equal(codec.encodingLength({hello: xs}), l+3)
-  var b = Buffer.alloc(l+3)
+  t.equal(codec.encodingLength({hello: xs}), l+4)
+  var b = Buffer.alloc(l+4)
   //fails because the string length is out of bounds
   t.throws(()=> {codec.encode({hello:xs}, b, 0)}, {message: 'u8 value out of bounds'})
 
-  var l = 256-3
+  var l = 256-4
   var xs = Buffer.alloc(l).fill('x').toString()
   console.log(xs)
-  t.equal(codec.encodingLength({hello: xs}), l+3)
-  var b = Buffer.alloc(l+3)
+  t.equal(codec.encodingLength({hello: xs}), l+4)
+  var b = Buffer.alloc(l+4)
   //fails because the object length is out of bounds
   t.throws(()=> {
     codec.encode({hello:xs}, b, 0)
@@ -460,12 +461,12 @@ tape('fixed position variable sized field', function (t) {
     ltp.Field('foo', 0, ltp.codex.u8),
     ltp.FixedPositionVariableSizeField('bar', 1, ltp.codex.string_u8)
   ])
-  var b = Buffer.alloc(1+1+3)
+  var b = Buffer.alloc(1+1+3+1)
   var expected = {foo: 10, bar: 'baz'}
   codec.encode(expected, b, 0)
   t.deepEqual(codec.decode(b, 0), expected)
 
-  var b = Buffer.alloc(1+1+0)
+  var b = Buffer.alloc(1+1+0+1)
   var expected = {foo: 10, bar: ''}
   codec.encode(expected, b, 0)
   t.deepEqual(codec.decode(b, 0), expected)
