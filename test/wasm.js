@@ -42,15 +42,13 @@ tape('read raw data', function (t) {
 
   t.equal(wasm.decode__u8(start), expected.foo)
   t.equal(wasm.decode__u32(start+1), expected.bar)
-  var length = wasm.decode__length__string_u8(wasm.decode_relp__u8(start+5)) 
+  var length2 = wasm.decode__length__string_u8(wasm.decode_relp__u8(start+5)) 
 
   console.log(O.decode(memory, start))
 
-  t.equal(length, expected.name.length)
+  t.equal(length2, expected.name.length)
   var str = wasm.decode__string_u8(wasm.decode_relp__u8(start+5))
-  console.log(str)
-  t.equal(memory.slice(str, str+length).toString(), expected.name)
-//  module.instance.exports
+  t.equal(memory.slice(str, str+length2).toString(), expected.name)
 
   t.end()
 })
@@ -114,7 +112,7 @@ tape('encodedLength', function (t) {
 
   //note, endodedLength on schema S, which doesn't have the list
   //so the list bytes are ignored so the length is shorter.
-  t.equal(S.encodedLength(memory, start), 21)
+  t.equal(S.encodedLength(memory, start), 22)
   t.end()
 })
 
@@ -133,18 +131,22 @@ tape('encode via C', function (t) {
 //  wasm.encoded_length__basic
   //a c style nul delimited string
   var cstring = start+len
-  var string_u8 = start+len+8
+  var free = start+len+8
   memory.write('HELLO\x00', cstring, 'utf8')
 
+/*
   wasm.encode__string_u8(string_u8, cstring, 5)
-  t.equal(wasm.decode__length__string_u8(string_u8), 5)
+  console.log(memory.slice(string_u8, string_u8+7))
+  t.equal(wasm.decode__length__string_u8(string_u8), 6)
 
-  console.log(memory.slice(string_u8, string_u8+1+5))
+  console.log(memory.slice(string_u8, string_u8+5))
   console.log(decode_string(string_u8))
+*/
+  free += wasm.encode__basic_name(start, cstring, free)
 
-  wasm.encode__basic_name(start, string_u8)
-
+  console.log("DECODE NAME")
   t.equal(O.decode(memory, start).name, 'HELLO')
+  t.equal(free, start+len+8+1+5+1)
   t.end()
 })
 
@@ -172,22 +174,54 @@ tape('encode via C & compact', function (t) {
   //  wasm.encoded_length__basic
   //a c style nul delimited string
   var cstring = start+len
-  var string_u8 = start+len+8
+//  var string_u8 = start+len+8
   memory.write('HELLO\x00', cstring, 'utf8')
 
-  wasm.encode__string_u8(string_u8, cstring, 5)
-  t.equal(wasm.decode__length__string_u8(string_u8), 5)
+  var cstring2 = cstring+1000
 
-  console.log(memory.slice(string_u8, string_u8+1+5))
-  console.log(decode_string(string_u8))
+  function decode_cstring(s) {
+    return memory.slice(s, s + wasm.strlen(s)).toString('utf8')
+  }
 
-  wasm.encode__basic_name(start, string_u8)
+  wasm._memcpy(cstring2, cstring, wasm.strlen(cstring)+1)
+  console.log('start-cstring2', decode_cstring(cstring2))
+  
 
+//  wasm.encode__string_u8(string_u8, cstring, 5)
+ // t.equal(wasm.decode__length__string_u8(string_u8), 6)
+
+//  console.log(memory.slice(string_u8, string_u8+1+5))
+//  console.log(decode_string(string_u8))
+
+//  wasm.encode__relp(start, string_u8,
+  var free = start+6
+  console.log('start-cstring', decode_cstring(cstring))
+  console.log('decode__basic_name',  wasm.encode__basic_name(start))
+  console.log('raw', memory.slice(start, free+10))
+  free += wasm.encode__basic_name(start, cstring, free)
+  t.equal(free, start+6+1+5+1, 'free pointer is correct')
+  console.log('raw', memory.slice(start, free+10))
+  var cstring3 = wasm.decode__basic_name(start)
+  console.log('start-cstring2', decode_cstring(cstring2))
+
+
+
+  console.log('decode', S.decode(memory, start))
+  console.log('raw', memory.slice(start, free+10))
+  console.log('---')
   var _buffer = S.compact(memory, start)
-  t.equal(S.encodedLength(_buffer, 0), 12) // 1 + 4 + 1 + 1 + 5
+  console.log(_buffer)
+
+  t.equal(S.encodedLength(memory, start), 13) // 1 + 4 + 1 + 1 + 5 + 1
+  t.deepEqual(S.decode(memory, start), expected3)
+
+  console.log('decode', S.decode(_buffer, 0))
+  t.equal(S.encodedLength(_buffer, 0), 13) // 1 + 4 + 1 + 1 + 5 + 1
   t.deepEqual(S.decode(_buffer, 0), expected3)
   t.end()
 })
+
+return
 
 tape('single encode call', function (t) {
   var start2 = start+100
