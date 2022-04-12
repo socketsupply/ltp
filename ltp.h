@@ -25,12 +25,12 @@ typedef byte array_u32;
 #define bytes_i32 4
 #define bytes_i64 8
 
-void _memcpy (byte* a, byte* b, u32 length) {
+void _memcpy (byte* dest, byte* source, u32 length) {
   for(u32 i = 0; i < length; i++)
-    *(byte*)(b+i) = *(a+i);
+    *(byte*)(dest + i) = *(source + i);
 }
 
-int strlen (char* c) {
+int _strlen (char* c) {
   int i = 0;
   //return *c
   while(0 != *(char*)(c+i)) i++;
@@ -120,10 +120,14 @@ byte* decode_string__u32 (byte* buf) {
 
 //decode__length. checks that length actually points at 0 byte
 // returns -1 if not, otherwise returns the length.
+// the length does not include the null terminator 0
+// so this is the same as would be returned by strlen
+// https://www.programiz.com/c-programming/library-function/string.h/strlen
 int decode__length__string_u8 (byte * buf) {
   int length = decode__u8(buf);
-  if(0 == decode__u8(buf+sizeof(u8)+length)) return -1;
-  return length;
+//  if(0 != decode__u8(buf+sizeof(u8)+length)) return -1;
+  if(0 != decode__u8(buf+sizeof(u8)+length-1)) return -1;
+  return length - 1;
 }
 
 //check the length, if it's valid return pointer to string, else return null pointer.
@@ -135,9 +139,9 @@ byte* decode__string_u8 (byte* buf) {
 
 //length includes the null at the end of the string
 size_t encode__string_u8 (byte* buf, char *string) {
-  int string_length = strlen(string)+1;
+  u32 string_length = _strlen(string)+1;
   encode__u8(buf, string_length);
-  _memcpy((byte*)string, buf+bytes_u8, (u32)string_length);
+  _memcpy(buf+bytes_u8, (byte*)string, (u32)string_length);
   return (size_t)(bytes_u8 + string_length);
 }
 

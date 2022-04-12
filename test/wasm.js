@@ -8,7 +8,7 @@ var tape = require('tape')
 var wasm, memory, start, module
 
 tape('init', function (t) {
-  var src = new Uint8Array(fs.readFileSync(path.join(__dirname, '..', 'ltp.wasm')))
+  var src = new Uint8Array(fs.readFileSync(path.join(__dirname, 'build', 'ltp.wasm')))
   WebAssembly.instantiate(src, {
 
   }).then(function (_module) {
@@ -180,10 +180,10 @@ tape('encode via C & compact', function (t) {
   var cstring2 = cstring+1000
 
   function decode_cstring(s) {
-    return memory.slice(s, s + wasm.strlen(s)).toString('utf8')
+    return memory.slice(s, s + wasm._strlen(s)).toString('utf8')
   }
 
-  wasm._memcpy(cstring2, cstring, wasm.strlen(cstring)+1)
+  wasm._memcpy(cstring2, cstring, wasm._strlen(cstring)+1)
   console.log('start-cstring2', decode_cstring(cstring2))
   
 
@@ -229,8 +229,8 @@ tape('single encode call', function (t) {
   var string = 'HI THERE\x00'
   start2 += memory.write(string, cstring2=start2, 'utf8')
   console.log('hi there', memory.slice(cstring2, cstring2+10))
-  t.equal(wasm.strlen(cstring2), string.length-1, "correct string length")
-  console.log(wasm.strlen(cstring2))
+  t.equal(wasm._strlen(cstring2), string.length-1, "correct string length")
+  console.log(wasm._strlen(cstring2))
   var bytes = wasm.encode__simpler(start2, 100, 1000, cstring2)
   console.log(memory.slice(start2, start2+32))
   console.log(bytes)
