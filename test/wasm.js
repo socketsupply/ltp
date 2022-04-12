@@ -40,22 +40,22 @@ tape('read raw data', function (t) {
   console.log(memory.slice(start, start+30))
 
 
-  t.equal(wasm.decode__u8(start), expected.foo)
-  t.equal(wasm.decode__u32(start+1), expected.bar)
-  var length2 = wasm.decode__length__string_u8(wasm.decode_relp__u8(start+5)) 
+  t.equal(wasm.ltp_decode__u8(start), expected.foo)
+  t.equal(wasm.ltp_decode__u32(start+1), expected.bar)
+  var length2 = wasm.ltp_decode__length__string_u8(wasm.ltp_decode_relp__u8(start+5)) 
 
   console.log(O.decode(memory, start))
 
   t.equal(length2, expected.name.length)
-  var str = wasm.decode__string_u8(wasm.decode_relp__u8(start+5))
+  var str = wasm.ltp_decode__string_u8(wasm.ltp_decode_relp__u8(start+5))
   t.equal(memory.slice(str, str+length2).toString(), expected.name)
 
   t.end()
 })
 
 function decode_string(ptr) {
-  var length = wasm.decode__length__string_u8(ptr) 
-  var str = wasm.decode__string_u8(ptr)
+  var length = wasm.ltp_decode__length__string_u8(ptr) 
+  var str = wasm.ltp_decode__string_u8(ptr)
   return memory.toString('utf8', str, str+length)
 }
 
@@ -74,26 +74,26 @@ tape('read via generated apis', function (t) {
   // tried to pass in a js function to callback but it doesn't seem to work like that.
   //  table.grow(1)
   //  table.set(0, function (a, b) { return a === b })
-  t.equal(wasm.decode_array_length__u8(list), expected.list.length)
+  t.equal(wasm.ltp_decode_array_length__u8(list), expected.list.length)
 
   for(var i = 0; i < expected.list.length; i++) {
-    console.log('list['+i+']='+wasm.decode_array_index__u8(list, i))
-    t.equal(decode_string(wasm.decode_array_index__u8(list, i)), expected.list[i])
+    console.log('list['+i+']='+wasm.ltp_decode_array_index__u8(list, i))
+    t.equal(decode_string(wasm.ltp_decode_array_index__u8(list, i)), expected.list[i])
   }
 
   console.log([
-    wasm.decode_array_index__u8(list, 0),
-    wasm.decode_array_index__u8(list, 1),
-    wasm.decode_array_index__u8(list, 2)
+    wasm.ltp_decode_array_index__u8(list, 0),
+    wasm.ltp_decode_array_index__u8(list, 1),
+    wasm.ltp_decode_array_index__u8(list, 2)
   ])
 
   //can look up indexes of matching strings
   for(var i = 0; i < expected.list.length; i++) {
-    var last = wasm.decode_array_index__u8(list, i)
-    t.equal(wasm.array_index_of__string_u8(list, last), i)
+    var last = wasm.ltp_decode_array_index__u8(list, i)
+    t.equal(wasm.ltp_array_index_of__string_u8(list, last), i)
   }
 
-    t.equal(wasm.array_index_of__string_u8(list, baz), 2)
+    t.equal(wasm.ltp_array_index_of__string_u8(list, baz), 2)
 
 //  t.equal(decode_string(), expected.name, expected name)
   t.end()

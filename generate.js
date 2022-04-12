@@ -1,15 +1,15 @@
 var path = require('path')
 var ltp = require('./')
 
-function generateObjectCodec (name, schema, map) {
+function generateObjectCodec (prefix, name, schema, map) {
   var s = ''
   var min = ltp.getMinimumSize(schema)
   if(isNaN(min)) throw new Error('expected integer for minimum size, got NaN')
   function decode(field, decoder) {
-    return `decode__${name}_${field.name}`
+    return `${prefix}decode__${name}_${field.name}`
   }
   function encode(field, decoder) {
-    return `encode__${name}_${field.name}`
+    return `${prefix}encode__${name}_${field.name}`
   }
   var args = [], ops = []
 
@@ -27,12 +27,12 @@ function generateObjectCodec (name, schema, map) {
     if(direct && !pointed) {
       s += (`
 ${direct.type} ${decode(field)} (byte* buf) {
-  return decode__${direct.type}((byte*)(buf+${position}));
+  return ltp_decode__${direct.type}((byte*)(buf+${position}));
 }
 `)
       s += (`
 void ${encode(field)} (byte* buf, ${direct.type} ${v_name}) {
-  encode__${direct.type}((byte*)(buf+${position}), ${v_name});
+  ltp_encode__${direct.type}((byte*)(buf+${position}), ${v_name});
 }
 `)     
 
@@ -45,13 +45,13 @@ void ${encode(field)} (byte* buf, ${direct.type} ${v_name}) {
       //decode_${name}_${field.name} function returns a pointer to the input type.
      s +=(`
 ${pointed.type}* ${decode(field)} (byte* buf) {
-  return (${pointed.type}*)decode_relp__${direct.type}(buf+${field.position});
+  return (${pointed.type}*)ltp_decode_relp__${direct.type}(buf+${field.position});
 }
 `)
       s += (`
 size_t ${encode(field)} (byte* buf, ${pointed.type}* ${v_name}, byte* free) {
-  encode_relp__${direct.type}(buf+${position}, free);
-  return encode__string_u8(free, ${v_name});
+  ltp_encode_relp__${direct.type}(buf+${position}, free);
+  return ltp_encode__string_u8(free, ${v_name});
 }`)
       args.push(`${pointed.type}* v_${field.name}`)
       ops.push(`free += ${encode(field)}(buf, v_${field.name}, free)`)
@@ -71,8 +71,8 @@ size_t ${encode(field)} (byte* buf, ${pointed.type}* ${v_name}, byte* free) {
         s == (`
   size_t ${encode(field)}_cstring (byte* buf, char* ${v_name}, byte* free) {
   u32 len = strlen(${v_name});
-  encode__string_u8(free, ${v_name}, len);
-  encode__relp__u8(buf+${field.positon}, free);
+  ltp_encode__string_u8(free, ${v_name}, len);
+  ltp_encode__relp__u8(buf+${field.positon}, free);
   return len + 1;
 }
 `)
@@ -82,7 +82,7 @@ size_t ${encode(field)} (byte* buf, ${pointed.type}* ${v_name}, byte* free) {
 
   //a single encode function to get the entire object
   s += `
-size_t encode__${name} (byte* buf, ${args.join(', ')}) {
+size_t ${prefix}encode__${name} (byte* buf, ${args.join(', ')}) {
   byte* free = buf+${min};
   ${ops.map(e=>e+';').join('\n  ')}
   return (size_t)(free - buf); 
@@ -91,9 +91,9 @@ size_t encode__${name} (byte* buf, ${args.join(', ')}) {
   return s + '\n'
 }
 
-module.exports = function (schemas) {
+module.exports = function (schemas, prefix='') {
   var s = require('fs').readFileSync(path.join(__dirname, 'ltp.h'), 'utf8')
   for(var name in schemas)
-    s += generateObjectCodec(name, schemas[name])
+    s += generateObjectCodec(prefix, name, schemas[name])
   return s
 }
