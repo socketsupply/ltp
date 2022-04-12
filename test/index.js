@@ -62,7 +62,6 @@ tape('strings', function (t) {
   })
   t.end()
 })
-//return
 
 tape('encode decode three values', function (t) {
 
