@@ -118,34 +118,50 @@ byte* ltp_decode_string__u32 (byte* buf) {
   return (byte*)(buf + sizeof(u32));
 }
 
-
-
 //decode__length. checks that length actually points at 0 byte
 // returns -1 if not, otherwise returns the length.
 // the length does not include the null terminator 0
 // so this is the same as would be returned by strlen
 // https://www.programiz.com/c-programming/library-function/string.h/strlen
-int ltp_decode__length__string_u8 (byte * buf) {
-  int length = ltp_decode__u8(buf);
-//  if(0 != decode__u8(buf+sizeof(u8)+length)) return -1;
-  if(0 != ltp_decode__u8(buf+sizeof(u8)+length-1)) return -1;
-  return length - 1;
+
+// string_u8
+
+#define ltp_decode__length__string(X) \
+int ltp_decode__length__string_u8 (byte * buf) { \
+  int length = ltp_decode__##X(buf); \
+  if(0 != ltp_decode__##X(buf+sizeof(u8)+length-1)) return -1; \
+  return length - 1; \
 }
+
 
 //check the length, if it's valid return pointer to string, else return null pointer.
-byte* ltp_decode__string_u8 (byte* buf) {
-  int length = ltp_decode__length__string_u8(buf);
-  if(~length)
-    return (byte*)(buf + sizeof(u8));
+#define ltp_decode__string(X) \
+byte* ltp_decode__string_##X (byte* buf) { \
+  int length = ltp_decode__length__string_##X(buf); \
+  if(~length) return (byte*)(buf + sizeof(X)); \
 }
 
+
 //length includes the null at the end of the string
-size_t ltp_encode__string_u8 (byte* buf, char *string) {
-  u32 string_length = _strlen(string)+1;
-  ltp_encode__u8(buf, string_length);
-  _memcpy(buf+bytes_u8, (byte*)string, (u32)string_length);
-  return (size_t)(bytes_u8 + string_length);
+#define ltp_encode__string(X) \
+size_t ltp_encode__string_##X (byte* buf, char *string) { \
+  u32 string_length = _strlen(string)+1; \
+  ltp_encode__##X(buf, string_length); \
+  _memcpy(buf+sizeof(X), (byte*)string, (u32)string_length); \
+  return (size_t)(sizeof(X) + string_length); \
 }
+
+ltp_decode__length__string(u8)
+ltp_decode__string(u8)
+ltp_encode__string(u8)
+
+ltp_decode__length__string(u16)
+ltp_decode__string(u16)
+ltp_encode__string(u16)
+
+ltp_decode__length__string(u32)
+ltp_decode__string(u32)
+ltp_encode__string(u32)
 
 
 /*
