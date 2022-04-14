@@ -221,8 +221,6 @@ tape('encode via C & compact', function (t) {
   t.end()
 })
 
-return
-
 tape('single encode call', function (t) {
   var start2 = start+100
   var cstring2
