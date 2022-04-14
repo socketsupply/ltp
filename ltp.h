@@ -11,8 +11,10 @@ typedef long long int i64;
 typedef u8 byte;
 ///*
 typedef byte string_u8;
+typedef byte string_u16;
 typedef byte string_u32;
 typedef byte array_u8;
+typedef byte array_u16;
 typedef byte array_u32;
 
 #define bytes_u8  1
@@ -127,9 +129,9 @@ byte* ltp_decode_string__u32 (byte* buf) {
 // string_u8
 
 #define ltp_decode__length__string(X) \
-int ltp_decode__length__string_u8 (byte * buf) { \
+int ltp_decode__length__string_##X (byte * buf) { \
   int length = ltp_decode__##X(buf); \
-  if(0 != ltp_decode__##X(buf+sizeof(u8)+length-1)) return -1; \
+  if(0 != ltp_decode__##X(buf+sizeof(X)+length-1)) return -1; \
   return length - 1; \
 }
 
@@ -180,10 +182,16 @@ byte* decode_relp__u32 (byte* buf) {
 //  return (byte*)(buf+relp_value);
 //}
 */
+
+
+//does nothing but makes the compiler shutup
+size_t ltp_encode__array_u8 (byte* buf, byte* a[]) {
+  return 0;
+}
+
 int ltp_decode_array_length__u8(byte* buf) {
   return ltp_decode__u8(buf) / sizeof(u8);
 }
-
 
 byte* ltp_decode_array_index__u8(byte* buf, int index) {
   int length = ltp_decode__u8(buf);
