@@ -154,7 +154,7 @@ size_t ltp_encode__string_##X (byte* buf, X string_length, char *string) { \
 }
 
 // Buffer - buffer is just raw memory without 0 terminator and no check
-
+//          can be used to encode any object where we can just copy the whole thing in.
 #define ltp_decode__length__buffer(X) \
 int ltp_decode__length__buffer_##X (byte * buf) { \
   return ltp_decode__##X(buf); \
@@ -167,7 +167,6 @@ byte* ltp_decode__buffer_##X (byte* buf) { \
   if(length) return (byte*)(buf + sizeof(X)); \
   return 0; \
 }
-
 
 //length includes the null at the end of the string
 #define ltp_encode__buffer(X) \
