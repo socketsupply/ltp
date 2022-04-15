@@ -4,6 +4,24 @@ var ltp = require('../index')
 
 var tape = require('tape')
 
+  
+var O = ltp.ObjectCodec([
+  ltp.DirectField('foo', 0, ltp.codex.u8),
+  ltp.DirectField('bar', 1, ltp.codex.u32),
+  ltp.PointedField('name', 5, ltp.codex.u8, ltp.codex.string_u8),
+  ltp.PointedField('list', 6, ltp.codex.u8, ltp.ArrayCodec(ltp.codex.u8, ltp.codex.u8, ltp.codex.string_u8))
+])
+
+var S = ltp.ObjectCodec([
+  ltp.DirectField('foo', 0, ltp.codex.u8),
+  ltp.DirectField('bar', 1, ltp.codex.u32),
+  ltp.PointedField('name', 5, ltp.codex.u8, ltp.codex.string_u8)
+])
+
+
+var BN = ltp.ObjectCodec([
+  ltp.PointedField('name', 0, ltp.codex.u32, ltp.codex.string_u32)
+])
 
 var wasm, memory, start, module
 
@@ -19,13 +37,7 @@ tape('init', function (t) {
     t.end()
   })
 })
-  
-var O = ltp.ObjectCodec([
-  ltp.DirectField('foo', 0, ltp.codex.u8),
-  ltp.DirectField('bar', 1, ltp.codex.u32),
-  ltp.PointedField('name', 5, ltp.codex.u8, ltp.codex.string_u8),
-  ltp.PointedField('list', 6, ltp.codex.u8, ltp.ArrayCodec(ltp.codex.u8, ltp.codex.u8, ltp.codex.string_u8))
-])
+
 
 var expected = {foo: 1, bar: 1234, name: 'Hello, World!', list: ['foo', 'bar', 'baz']} 
 
@@ -36,7 +48,7 @@ tape('read raw data', function (t) {
 
   var length = O.encode(expected, memory, start)
   baz = start+O.encode.bytes
-  ltp.codex.string_u8.encode('baz', memory, baz)
+  ltp.codex.string_u8.encode('baz', memory, wasm._strlen(baz)+1, baz)
   console.log(memory.slice(start, start+30))
 
 
@@ -98,14 +110,9 @@ tape('read via generated apis', function (t) {
 //  t.equal(decode_string(), expected.name, expected name)
   t.end()
 })
+
 //*/
 var expected2 = {foo: 1, bar: 1234, name: 'Hello, World!'} 
-
-var S = ltp.ObjectCodec([
-  ltp.DirectField('foo', 0, ltp.codex.u8),
-  ltp.DirectField('bar', 1, ltp.codex.u32),
-  ltp.PointedField('name', 5, ltp.codex.u8, ltp.codex.string_u8)
-])
 
 
 tape('encodedLength', function (t) {
@@ -142,7 +149,7 @@ tape('encode via C', function (t) {
   console.log(memory.slice(string_u8, string_u8+5))
   console.log(decode_string(string_u8))
 */
-  free += wasm.encode__basic_name(start, cstring, free)
+  free += wasm.encode__basic_name(start, wasm._strlen(cstring)+1, cstring, free)
 
   console.log("DECODE NAME")
   t.equal(O.decode(memory, start).name, 'HELLO')
@@ -196,9 +203,9 @@ tape('encode via C & compact', function (t) {
 //  wasm.encode__relp(start, string_u8,
   var free = start+6
   console.log('start-cstring', decode_cstring(cstring))
-  console.log('decode__basic_name',  wasm.encode__basic_name(start))
+//  console.log('decode__basic_name',  wasm.encode__basic_name(start))
   console.log('raw', memory.slice(start, free+10))
-  free += wasm.encode__basic_name(start, cstring, free)
+  free += wasm.encode__basic_name(start, wasm._strlen(cstring)+1, cstring, free)
   t.equal(free, start+6+1+5+1, 'free pointer is correct')
   console.log('raw', memory.slice(start, free+10))
   var cstring3 = wasm.decode__basic_name(start)
@@ -220,7 +227,6 @@ tape('encode via C & compact', function (t) {
   t.deepEqual(S.decode(_buffer, 0), expected3)
   t.end()
 })
-
 tape('single encode call', function (t) {
   var start2 = start+100
   var cstring2
@@ -229,9 +235,21 @@ tape('single encode call', function (t) {
   console.log('hi there', memory.slice(cstring2, cstring2+10))
   t.equal(wasm._strlen(cstring2), string.length-1, "correct string length")
   console.log(wasm._strlen(cstring2))
-  var bytes = wasm.encode__simpler(start2, 100, 1000, cstring2)
+  var bytes = wasm.encode__simpler(start2, 100, 1000, wasm._strlen(cstring2)+1, cstring2)
   console.log(memory.slice(start2, start2+32))
   console.log(bytes)
   t.deepEqual(S.decode(memory, start2), {foo: 100, bar: 1000, name: 'HI THERE'})
   t.end()
+})
+tape('encode/decode string_u32', function (t) {
+  var start2 = start+100
+  var cstring2
+  var string = 'LTP\x00'
+  memory.write(string, cstring2=start2, 'utf8')
+  var bytes = wasm.encode__bigName(start, wasm._strlen(cstring2)+1, cstring2)
+  console.log(memory.slice(start, start+32))
+//  t.deepEqual(BN.decode(memory, start2), {name: 'HI THERE'})
+  t.end()
+
+
 })
