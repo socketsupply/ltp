@@ -49,12 +49,12 @@ ${pointed.type}* ${decode(field)} (byte* buf) {
 }
 `)
       s += (`
-size_t ${encode(field)} (byte* buf, ${pointed.type}* ${v_name}, byte* free) {
+size_t ${encode(field)} (byte* buf, int ${v_name}_length, ${pointed.type}* ${v_name}, byte* free) {
   ltp_encode_relp__${direct.type}(buf+${position}, free);
-  return ltp_encode__${pointed.type}(free, ${v_name});
+  return ltp_encode__${pointed.type}(free, ${v_name}_length, ${v_name});
 }`)
-      args.push(`${pointed.type}* v_${field.name}`)
-      ops.push(`free += ${encode(field)}(buf, v_${field.name}, free)`)
+      args.push(`int v_${field.name}__length, ${pointed.type}* v_${field.name}`)
+      ops.push(`free += ${encode(field)}(buf, v_${field.name}__length, v_${field.name}, free)`)
     }
     else if(!direct && pointed) {
 
@@ -66,17 +66,18 @@ size_t ${encode(field)} (byte* buf, ${pointed.type}* ${v_name}, byte* free) {
     //would be best to return the bytes used (or, new pointer to next free space)
     //abstract-encoding returns the buffer, enabling allocating the buffer but that's not a great usecase) 
 
-
+/*
     if(pointed) {
         s == (`
-  size_t ${encode(field)}_cstring (byte* buf, char* ${v_name}, byte* free) {
+  size_t ${encode(field)}_cstring (byte* buf, int {v_name}_length,  char* ${v_name}, byte* free) {
   u32 len = strlen(${v_name});
-  ltp_encode__${pointed.type}(free, ${v_name}, len);
+  ltp_encode__${pointed.type}(free, ${v_name}_length, ${v_name}, len);
   ltp_encode__relp__${direct.type}(buf+${field.positon}, free);
   return len + 1;
 }
 `)
     }
+*/
   })
 
 
