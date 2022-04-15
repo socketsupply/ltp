@@ -141,16 +141,40 @@ int ltp_decode__length__string_##X (byte * buf) { \
 byte* ltp_decode__string_##X (byte* buf) { \
   int length = ltp_decode__length__string_##X(buf); \
   if(~length) return (byte*)(buf + sizeof(X)); \
+  return 0; \
 }
 
 
 //length includes the null at the end of the string
 #define ltp_encode__string(X) \
-size_t ltp_encode__string_##X (byte* buf, char *string) { \
-  u32 string_length = _strlen(string)+1; \
+size_t ltp_encode__string_##X (byte* buf, X string_length, char *string) { \
   ltp_encode__##X(buf, string_length); \
   _memcpy(buf+sizeof(X), (byte*)string, (u32)string_length); \
   return (size_t)(sizeof(X) + string_length); \
+}
+
+// Buffer - buffer is just raw memory without 0 terminator and no check
+
+#define ltp_decode__length__buffer(X) \
+int ltp_decode__length__buffer_##X (byte * buf) { \
+  return ltp_decode__##X(buf); \
+}
+
+//check the length, if it's valid return pointer to string, else return null pointer.
+#define ltp_decode__buffer(X) \
+byte* ltp_decode__buffer_##X (byte* buf) { \
+  int length = ltp_decode__length__buffer_##X(buf); \
+  if(length) return (byte*)(buf + sizeof(X)); \
+  return 0; \
+}
+
+
+//length includes the null at the end of the string
+#define ltp_encode__buffer(X) \
+size_t ltp_encode__buffer_##X (byte* buf, int buffer_length, char *buffer) { \
+  ltp_encode__##X(buf, buffer_length); \
+  _memcpy(buf+sizeof(X), (byte*)string, (u32)buffer_length); \
+  return (size_t)(sizeof(X) + buffer_length); \
 }
 
 ltp_decode__length__string(u8)
@@ -165,6 +189,8 @@ ltp_decode__length__string(u32)
 ltp_decode__string(u32)
 ltp_encode__string(u32)
 
+
+ltp_decode__length__buffer(u8)
 
 /*
 byte* decode_relp__u8 (byte* buf) {
@@ -185,7 +211,7 @@ byte* decode_relp__u32 (byte* buf) {
 
 
 //does nothing but makes the compiler shutup
-size_t ltp_encode__array_u8 (byte* buf, byte* a[]) {
+size_t ltp_encode__array_u8 (byte* buf, u8 array_length, byte* a[]) {
   return 0;
 }
 
