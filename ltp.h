@@ -153,6 +153,18 @@ size_t ltp_encode__string_##X (byte* buf, X string_length, char *string) { \
   return (size_t)(sizeof(X) + string_length); \
 }
 
+ltp_decode__length__string(u8)
+ltp_decode__string(u8)
+ltp_encode__string(u8)
+
+ltp_decode__length__string(u16)
+ltp_decode__string(u16)
+ltp_encode__string(u16)
+
+ltp_decode__length__string(u32)
+ltp_decode__string(u32)
+ltp_encode__string(u32)
+
 // Buffer - buffer is just raw memory without 0 terminator and no check
 //          can be used to encode any object where we can just copy the whole thing in.
 #define ltp_decode__length__buffer(X) \
@@ -172,24 +184,54 @@ byte* ltp_decode__buffer_##X (byte* buf) { \
 #define ltp_encode__buffer(X) \
 size_t ltp_encode__buffer_##X (byte* buf, int buffer_length, char *buffer) { \
   ltp_encode__##X(buf, buffer_length); \
-  _memcpy(buf+sizeof(X), (byte*)string, (u32)buffer_length); \
+  _memcpy(buf+sizeof(X), (byte*)buffer, (u32)buffer_length); \
   return (size_t)(sizeof(X) + buffer_length); \
 }
 
-ltp_decode__length__string(u8)
-ltp_decode__string(u8)
-ltp_encode__string(u8)
-
-ltp_decode__length__string(u16)
-ltp_decode__string(u16)
-ltp_encode__string(u16)
-
-ltp_decode__length__string(u32)
-ltp_decode__string(u32)
-ltp_encode__string(u32)
-
-
 ltp_decode__length__buffer(u8)
+ltp_decode__buffer(u8)
+ltp_encode__buffer(u8)
+
+ltp_decode__length__buffer(u16)
+ltp_decode__buffer(u16)
+ltp_encode__buffer(u16)
+
+ltp_decode__length__buffer(u32)
+ltp_decode__buffer(u32)
+ltp_encode__buffer(u32)
+
+//Fixed size buffer. always the same number of bytes, used for hashes etc
+
+//check the length, if it's valid return pointer to string, else return null pointer.
+#define ltp_decode__fixed(X) \
+byte* ltp_decode__fixed_##X (byte* buf) { \
+  return buf; \
+} 
+
+//length includes the null at the end of the string
+#define ltp_encode__fixed(X) \
+size_t ltp_encode__fixed_##X (byte* buf, char *buffer) { \
+  _memcpy(buf, (byte*)buffer, X); \
+  return (size_t)X; \
+}
+
+typedef byte fixed_16[16];
+typedef byte fixed_20[20];
+typedef byte fixed_32[32];
+typedef byte fixed_64[64];
+
+
+ltp_decode__fixed(16); //ipv6 address
+ltp_encode__fixed(16);
+
+ltp_decode__fixed(20); //sha1
+ltp_encode__fixed(20);
+
+ltp_decode__fixed(32); //sha256
+ltp_encode__fixed(32);
+
+ltp_decode__fixed(64); //sha3
+ltp_encode__fixed(64);
 
 /*
 byte* decode_relp__u8 (byte* buf) {
