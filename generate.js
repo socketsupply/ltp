@@ -1,6 +1,15 @@
 var path = require('path')
 var ltp = require('./')
 
+var sizes = {
+
+
+}
+
+function size(type) {
+  return `sizeof(${type})`
+}
+
 function generateObjectCodec (prefix, name, schema, map) {
   var s = ''
   var min = ltp.getMinimumSize(schema)
@@ -24,21 +33,52 @@ function generateObjectCodec (prefix, name, schema, map) {
 
     var {type, direct, pointed, position} = field
     var v_name = `v_${field.name}`
-    if(direct && !pointed) {
-      s += (`
-${direct.type} ${decode(field)} (byte* buf) {
-  return ltp_decode__${direct.type}((byte*)(buf+${position}));
-}
-`)
-      s += (`
-void ${encode(field)} (byte* buf, ${direct.type} ${v_name}) {
-  ltp_encode__${direct.type}((byte*)(buf+${position}), ${v_name});
-}
-`)     
 
-      args.push(`${direct.type} ${v_name}`)
-      ops.push(`${encode(field)}(buf, v_${field.name})`)
+    //Direct value (fixed size only)
+    if(direct && !pointed) {
+      //check if it's a direct field, but we are handling it as a pointer
+      //for example, it's a fixed size array.
+      if(direct.pointer) {
+
+        s += (`
+  ${direct.type}* ${decode(field)} (byte* buf) {
+    return ltp_decode__${direct.type}((byte*)(buf+${position}));
+  }
+  `)
+
+        s += (`
+  void ${encode(field)} (byte* buf, ${direct.type}* ${v_name}) {
+    ltp_encode__${direct.type}((byte*)(buf+${position}), ${v_name});
+  }
+  `)     
+
+        args.push(`${direct.type}* ${v_name}`)
+
+        ops.push(`${encode(field)}(buf, v_${field.name})`)
+
+      }
+      else {
+
+        s += (`
+  ${direct.type} ${decode(field)} (byte* buf) {
+    return ltp_decode__${direct.type}((byte*)(buf+${position}));
+  }
+  `)
+
+        s += (`
+  void ${encode(field)} (byte* buf, ${direct.type} ${v_name}) {
+    ltp_encode__${direct.type}((byte*)(buf+${position}), ${v_name});
+  }
+  `)     
+
+        args.push(`${direct.type} ${v_name}`)
+
+        ops.push(`${encode(field)}(buf, v_${field.name})`)
+
+      }
     }
+
+    //Direct to Pointed - (variable size value)
 
     else if(direct && pointed) {
       //returns a pointer to the field type 
@@ -56,28 +96,27 @@ size_t ${encode(field)} (byte* buf, int ${v_name}_length, ${pointed.type}* ${v_n
       args.push(`int v_${field.name}__length, ${pointed.type}* v_${field.name}`)
       ops.push(`free += ${encode(field)}(buf, v_${field.name}__length, v_${field.name}, free)`)
     }
+
+    // Pointed only (implicit pointer, A SINGLE fixed position variable sized value)
     else if(!direct && pointed) {
+      //generate encode/decode
+           s +=(`
+      ${pointed.type}* ${decode(field)} (byte* buf) {
+        return (${pointed.type}*)(buf+${field.position});
+      }`)
 
-      args.push(`${field.pointed.type}* v_${field.name}`)
-      ops.push(`free += ${encode(field)}(buf, v_${field.name}, free)`)
+      s += (`
+    size_t ${encode(field)} (byte* buf, int ${v_name}_length, ${pointed.type}* ${v_name}, byte* free) {
+      return ltp_encode__${pointed.type}(${field.position}, ${v_name}_length, ${v_name});
+    }`)
 
+      args.push(`int ${v_name}_length, ${field.pointed.type}* v_${field.name}`)
+      ops.push(`free += ${encode(field)}(buf, v_${field.name}_length, v_${field.name}, free)`)
     }
     //note, this sort of encode function, must copy another type data in.
     //would be best to return the bytes used (or, new pointer to next free space)
     //abstract-encoding returns the buffer, enabling allocating the buffer but that's not a great usecase) 
 
-/*
-    if(pointed) {
-        s == (`
-  size_t ${encode(field)}_cstring (byte* buf, int {v_name}_length,  char* ${v_name}, byte* free) {
-  u32 len = strlen(${v_name});
-  ltp_encode__${pointed.type}(free, ${v_name}_length, ${v_name}, len);
-  ltp_encode__relp__${direct.type}(buf+${field.positon}, free);
-  return len + 1;
-}
-`)
-    }
-*/
   })
 
 
