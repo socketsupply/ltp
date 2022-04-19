@@ -107,7 +107,7 @@ size_t ${encode(field)} (byte* buf, int ${v_name}_length, ${pointed.type}* ${v_n
 
       s += (`
     size_t ${encode(field)} (byte* buf, int ${v_name}_length, ${pointed.type}* ${v_name}, byte* free) {
-      return ltp_encode__${pointed.type}(${field.position}, ${v_name}_length, ${v_name});
+      return ltp_encode__${pointed.type}((byte*)(buf+${field.position}), ${v_name}_length, ${v_name});
     }`)
 
       args.push(`int ${v_name}_length, ${field.pointed.type}* v_${field.name}`)
