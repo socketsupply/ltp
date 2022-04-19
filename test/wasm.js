@@ -1,7 +1,7 @@
 var fs = require('fs')
 var path = require('path')
 var ltp = require('../index')
-
+var crypto = require('crypto')
 var tape = require('tape')
 
   
@@ -18,6 +18,11 @@ var S = ltp.ObjectCodec([
   ltp.PointedField('name', 5, ltp.codex.u8, ltp.codex.string_u8)
 ])
 
+var F = ltp.ObjectCodec([
+  ltp.FixedPositionVariableSizeField('text', 96, ltp.codex.string_u16),
+  ltp.DirectField('hash', 64, ltp.codex.fixed_32),
+  ltp.DirectField('signature', 0, ltp.codex.fixed_64),
+])
 
 var BN = ltp.ObjectCodec([
   ltp.PointedField('name', 0, ltp.codex.u32, ltp.codex.string_u32)
@@ -251,5 +256,30 @@ tape('encode/decode string_u32', function (t) {
 //  t.deepEqual(BN.decode(memory, start2), {name: 'HI THERE'})
   t.end()
 
+})
+
+tape('encode/decode fpvs', function (t) {
+  var start3 = start+350
+  var _start3 = start+200
+  var string = 'LTP\x00'
+  var fixed_32 = start3+4
+  var fixed_64 = fixed_32+32
+  memory.write(string, cstring2=start3, 'utf8')
+  var hash = crypto.createHash('sha256').update(string).digest()
+  hash.copy(memory, fixed_32)
+//  memory.write('0011223344556677889aabbccddeeff', fixed_16, 'utf8')
+  var b = crypto.randomBytes(64)
+  b.copy(memory, fixed_64)
+  var bytes = wasm.encode__fixedbuf(_start3, 4, cstring2, fixed_32, fixed_64)
+
+  t.equal(bytes, 2+4+32+64)
+  console.log(memory.slice(_start3, _start3+100).toString('hex'))
+  console.log(memory.slice(_start3+96, _start3+100).toString('hex'))
+  t.deepEqual(
+    F.decode(memory, _start3),
+    {text: 'LTP', hash: hash, signature: b}
+  )
+
+  t.end()
 
 })
