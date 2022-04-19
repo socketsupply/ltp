@@ -80,6 +80,11 @@ var sizes = {
   u8: 1, u16: 2, u32: 4, u64:8,
   i8: 1, i16: 2, i32: 4, i64:8,
   f32: 4, f64: 8,
+
+  fixed_16: 16,
+  fixed_20: 20,
+  fixed_32: 32,
+  fixed_64: 64,
 }
 
 function sizeOf(codec) {
