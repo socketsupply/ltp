@@ -15,6 +15,14 @@ var schema = {
   bigName: [
     {name: 'name', position: 5, direct: {type: 'u32'}, pointed: {type: 'string_u32'}}
   ],
+  
+  fixedbuf: [
+    //note: Fied position variable sized field
+    {name: 'text', position: 96, /*direct: {type: 'u8'}, */pointed: {type: 'string_u16'}},
+    {name: 'hash', position: 64, direct: {type: 'fixed_32', pointer: true}},
+    {name: 'signature', position: 0, direct: {type: 'fixed_64', pointer: true}}
+  ]
+  
 
 }
 
