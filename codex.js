@@ -1,4 +1,5 @@
 var LengthDelimited = require('./length-delimited')
+var V = require('varstruct')
 
 var codex = {
   u8: {
@@ -41,8 +42,6 @@ var codex = {
   buffer: {
     encode: (value, buffer, start) => { value.copy(buffer, start); this.encode.bytes = value.length },
     decode: (buffer, start, _end) => { value.copy(buffer, start); this.encode.bytes = value.length },
-
-
   }
   //i8, i16, i32, i64 ...
 
@@ -70,4 +69,17 @@ codex.string_u8 = LengthDelimited(0, codex.u8, string)
 codex.string_u16 = LengthDelimited(0, codex.u16, string)
 codex.string_u32 = LengthDelimited(0, codex.u32, string)
 //codex.string_u64 = LengthDelimited(0x10, codex.64, string)
+
+function FixedBuffer (bytes) {
+  var c = V.Buffer(bytes)
+  c.bytes = bytes
+  return c
+}
+
+//common fixed buffer sizes
+codex.fixed_16 = FixedBuffer(16) //ipv6
+codex.fixed_20 = FixedBuffer(20) //sha1
+codex.fixed_32 = FixedBuffer(32) //sha256
+codex.fixed_64 = FixedBuffer(64) //sha3, ed25519 signature
+
 module.exports = codex
