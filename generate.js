@@ -121,12 +121,14 @@ size_t ${encode(field)} (byte* buf, int ${v_name}_length, ${pointed.type}* ${v_n
 
 
   //a single encode function to get the entire object
-  s += `
-size_t ${prefix}encode__${name} (byte* buf, ${args.join(', ')}) {
-  byte* free = buf+${min};
-  ${ops.map(e=>e+';').join('\n  ')}
-  return (size_t)(free - buf); 
-}`
+  if(args.length) {
+    s += `
+  size_t ${prefix}encode__${name} (byte* buf, ${args.join(', ')}) {
+    byte* free = buf+${min};
+    ${ops.map(e=>e+';').join('\n  ')}
+    return (size_t)(free - buf); 
+  }`
+  }
 
   return s + '\n'
 }
