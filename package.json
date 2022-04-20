@@ -11,5 +11,8 @@
     "test": "node test/index.js && node test/wasm.js && node test/any.js"
   },
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "varstruct": "^6.1.3"
+  }
 }
