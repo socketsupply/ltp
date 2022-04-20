@@ -3,6 +3,9 @@ typedef unsigned short int     u16;
 typedef unsigned int           u32;
 typedef unsigned long long int u64;
 
+typedef float  f32;
+typedef double f64;
+
 typedef char          i8;
 typedef short int     i16;
 typedef int           i32;
@@ -13,6 +16,9 @@ typedef u8 byte;
 typedef byte string_u8;
 typedef byte string_u16;
 typedef byte string_u32;
+typedef byte buffer_u8;
+typedef byte buffer_u16;
+typedef byte buffer_u32;
 typedef byte array_u8;
 typedef byte array_u16;
 typedef byte array_u32;
@@ -26,6 +32,9 @@ typedef byte array_u32;
 #define bytes_i16 2
 #define bytes_i32 4
 #define bytes_i64 8
+
+#define bytes_f32 4
+#define bytes_f64 8
 
 //#define CAT(a,b,c) ##a##b##c
 
@@ -108,6 +117,10 @@ ltp_encode_decode_int(i8)
 ltp_encode_decode_int(i16)
 ltp_encode_decode_int(i32)
 ltp_encode_decode_int(i64)
+
+ltp_encode_decode_int(f32)
+ltp_encode_decode_int(f64)
+
 
 ltp_encode_decode_relp(u8)
 ltp_encode_decode_relp(u16)
