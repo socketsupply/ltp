@@ -20,6 +20,16 @@ var codex = {
     decode: (buffer, start=0) => buffer.readUint32LE(start),
     bytes: 4,
   },
+  f32: {
+    encode: (value, buffer, start=0) => { buffer.writeFloatLE(value, start) },
+    decode: (buffer, start=0) => buffer.readFloatLE(start),
+    bytes: 4,
+  },
+  f64: {
+    encode: (value, buffer, start=0) => { buffer.writeDoubleLE(value, start) },
+    decode: (buffer, start=0) => buffer.readDoubleLE(start),
+    bytes: 4,
+  },
   u64: {
     //node buffers provide writeBigInt64LE but it's not UInt, so have to wrap that.
     encode: (value, buffer, start) => {
