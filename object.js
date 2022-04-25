@@ -4,7 +4,7 @@ var { getMinimumSize, assertNonOverlapping, encodeField, decodeField } = require
 function ObjectCodec(schema) {
   assertNonOverlapping(schema)
   var min = getMinimumSize(schema)
-
+  console.log("OBJECT_SCHEMA", schema)
   var fields = 0, fixed_fields = 0, variable_fields = 0, variable_field, length_field
 
   for(var i in schema) {
@@ -22,21 +22,25 @@ function ObjectCodec(schema) {
   }
 
   function encode (obj, buffer=Buffer.alloc(encodingLength(obj)), start=0) {
-    var free = min
+    var free = min, length_i
     if(isNaN(free)) throw new Error('min size was nan')
     for(var i = 0; i < schema.length; i++) {
       var field = schema[i]
-      if(!field.isLength) {
+      if(field.isType) {
+        var value = obj[field.name]
+        free += encodeField(field.position, field.direct, null, field.typeValue, buffer, start, free)
+      }
+      else if(!field.isLength) {
         var value = obj[field.name]
         free += encodeField(field.position, field.direct, field.pointed, value, buffer, start, free)
         if(isNaN(free)) throw new Error('free was nan after field:'+i)
       }
+      else
+        length_i = i
     }
-
     //the length field must be first
-    if(schema[0].isLength) {
-      var field = schema[0]
-      encodeField(field.position, field.direct, null, free, buffer, start)
+    if(length_field !== undefined) {
+      encodeField(length_field.position, length_field.direct, null, free, buffer, start)
     }
 
     //if this was encoded as a pointed field
@@ -45,7 +49,7 @@ function ObjectCodec(schema) {
     //not the direct bytes, but that's an private interface.
     //other encoders
     encode.bytes = free
-    return buffer
+    return free
   }
 
   function decode (buffer, start=0, end=buffer.length) {
@@ -184,6 +188,7 @@ function ObjectCodec(schema) {
 
   return {
     type:'object',
+    schema: schema,
     encode, decode, dereference, reflect, encodingLength,//, encodedLength
     bytes: variable_fields === 0 ? min : null,
     encodedLength, compact

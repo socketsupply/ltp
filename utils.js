@@ -56,15 +56,22 @@ function Field (name, position, direct, pointed, isNullable=true, allowVariable 
   }
 }
 
+function TypeField(name, position, direct, typeValue, typeName) {
+  return {
+    name, position, direct, isType: true, typeValue, typeName
+  }
+}
+
 function DirectField (name, position, direct) {
   return Field(name, position, direct, null, false)
 }
 
 function LengthField (name, position, direct) {
   assertFixedSize(direct)
-  if(position !== 0) throw new Error('length position must be zero')
+//  console.log("LengthField", {name, position, direct, isLength: true})
+//  if(position !== 0) throw new Error('length position must be zero')
   return {
-    name, position: 0, direct, isLength: true
+    name, position, direct, isLength: true
   }
 }
 
@@ -79,6 +86,7 @@ function LengthField (name, position, direct) {
 var sizes = {
   u8: 1, u16: 2, u32: 4, u64:8,
   i8: 1, i16: 2, i32: 4, i64:8,
+
   f32: 4, f64: 8,
 
   fixed_16: 16,
@@ -158,9 +166,13 @@ function encodeField(position, direct, pointed, value, buffer, start, free) {
 function decodeField (position, direct, pointed, buffer, start, end=buffer.length, allow_zero=false) {
 //  if(!direct)
 //    throw new Error('field must have direct codec')
-
-  if(direct && start + position + direct.bytes > end)
-    throw new Error('direct value out of bounds')
+  var test = direct && start + position + direct.bytes > end
+  if(test) {
+//    console.log('lo???g', {direct, start, position, end});
+  //  console.log()
+    //TODO XXX end is not big enough to contain: start + position + direct.bytes 
+    throw new Error('direct value out of bounds? :'+test+JSON.stringify({direct, start, position, end, test}))
+  }
 
   if(direct && !pointed)
     return direct.decode(buffer, start + position)
@@ -197,6 +209,6 @@ function drill (codec, path) {
 
 module.exports = {
   isNonOverlapping, assertNonOverlapping, isFixedSize, assertFixedSize, drill,
-  assertFixedSize, encodeField, decodeField, getMinimumSize, Field, DirectField, PointedField, LengthField,
+  assertFixedSize, encodeField, decodeField, getMinimumSize, Field, DirectField, PointedField, LengthField, TypeField,
   Constant
 }

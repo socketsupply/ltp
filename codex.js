@@ -3,6 +3,7 @@ var V = require('varstruct')
 
 var codex = {
   u8: {
+    type: 'u8',
     encode: (value, buffer, start) => {
       if(value > 0xff || value < 0) throw new Error('u8 value out of bounds')
       buffer[start] = value & 0xff
@@ -11,26 +12,31 @@ var codex = {
     bytes: 1,
   },
   u16: {
+    type: 'u16',
     encode: (value, buffer, start=0) => { buffer.writeUint16LE(value, start) },
     decode: (buffer, start=0) => buffer.readUint16LE(start),
     bytes: 2,
   },
   u32: {
+    type: 'u32',
     encode: (value, buffer, start=0) => { buffer.writeUint32LE(value, start) },
     decode: (buffer, start=0) => buffer.readUint32LE(start),
     bytes: 4,
   },
   f32: {
+    type: 'f32',
     encode: (value, buffer, start=0) => { buffer.writeFloatLE(value, start) },
     decode: (buffer, start=0) => buffer.readFloatLE(start),
     bytes: 4,
   },
   f64: {
+    type: 'f64',
     encode: (value, buffer, start=0) => { buffer.writeDoubleLE(value, start) },
     decode: (buffer, start=0) => buffer.readDoubleLE(start),
     bytes: 4,
   },
   u64: {
+    type: 'u64',
     //node buffers provide writeBigInt64LE but it's not UInt, so have to wrap that.
     encode: (value, buffer, start) => {
       if('number' === typeof value)
@@ -58,6 +64,7 @@ var codex = {
 }
 
 var string = {
+  type: 'string',
   encode: (value, buffer, start) => {
     var bytes = Buffer.byteLength(value)
     buffer.write(value, start, start+bytes)
@@ -91,5 +98,8 @@ codex.fixed_16 = FixedBuffer(16) //ipv6
 codex.fixed_20 = FixedBuffer(20) //sha1
 codex.fixed_32 = FixedBuffer(32) //sha256
 codex.fixed_64 = FixedBuffer(64) //sha3, ed25519 signature
+
+for(var k in codex)
+  codex[k].type = k
 
 module.exports = codex
