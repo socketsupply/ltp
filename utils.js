@@ -66,12 +66,12 @@ function DirectField (name, position, direct) {
   return Field(name, position, direct, null, false)
 }
 
-function LengthField (name, position, direct) {
+function LengthField (name, position, direct, offset=0) {
   assertFixedSize(direct)
 //  console.log("LengthField", {name, position, direct, isLength: true})
 //  if(position !== 0) throw new Error('length position must be zero')
   return {
-    name, position, direct, isLength: true
+    name, position, direct, isLength: true, offset
   }
 }
 

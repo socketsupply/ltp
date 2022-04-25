@@ -4,7 +4,6 @@ var { getMinimumSize, assertNonOverlapping, encodeField, decodeField } = require
 function ObjectCodec(schema) {
   assertNonOverlapping(schema)
   var min = getMinimumSize(schema)
-  console.log("OBJECT_SCHEMA", schema)
   var fields = 0, fixed_fields = 0, variable_fields = 0, variable_field, length_field
 
   for(var i in schema) {
@@ -40,7 +39,7 @@ function ObjectCodec(schema) {
     }
     //the length field must be first
     if(length_field !== undefined) {
-      encodeField(length_field.position, length_field.direct, null, free, buffer, start)
+      encodeField(length_field.position, length_field.direct, null, free-(length_field.offset|0), buffer, start)
     }
 
     //if this was encoded as a pointed field
@@ -62,7 +61,7 @@ function ObjectCodec(schema) {
 
       //remember the bytes, if length is included
       if(field.isLength) {
-        decode.bytes = value
+        decode.bytes = value+(length_field.offset|0)
         var _end = start + value
         if(_end > end) throw new Error('length field out of bounds')
         //but a smaller value for end is acceptable.
@@ -129,7 +128,7 @@ function ObjectCodec(schema) {
 
   function encodedLength (buffer, start, end=buffer.length) {
     if(variable_fields === 0) return min
-    else if(length_field) return decodeField(length_field.position, length_field.direct, null, buffer, start, end)
+    else if(length_field) return decodeField(length_field.position, length_field.direct, null, buffer, start, end)+(length_field.offset|0)
     else if(variable_fields === 1 && variable_field.direct == null) {
       return min + variable_field.pointed.encodedLength(buffer, start+variable_field.position)
     }
