@@ -1,13 +1,19 @@
-function encodingLength (codec, value) {
+function _encodingLength (codec, value) {
   return codec.bytes != null ?  codec.bytes : codec.encodingLength(value)
 }
 
 function LengthDelimited (id, length_codec, value_codec) {
   if(!length_codec.bytes) throw new Error('expected length_codec to be fixed length integer codec')
+
+
+  function encodingLength (value) {
+    var length = value_codec.encodingLength(value)
+    return _encodingLength(length_codec, length) + length
+  }
   var ld
   return ld = {
     type: id,
-    encode: (value, buffer, start) => {
+    encode: (value, buffer=Buffer.alloc(encodingLength(value)), start=0) => {
       if(isNaN(start)) throw new Error('start cannot be nan')
       length_codec.encode(value_codec.encodingLength(value), buffer, start)
       var bytes = length_codec.bytes || length_codec.encode.bytes
@@ -22,11 +28,8 @@ function LengthDelimited (id, length_codec, value_codec) {
       ld.decode.bytes = bytes + value_codec.decode.bytes
       return value
     },
-    encodingLength: (value) => {
-      var length = value_codec.encodingLength(value)
-      return encodingLength(length_codec, length) + length
-    },
-    encodedLength: (buffer, start, end) => {
+    encodingLength,
+    encodedLength: (buffer, start=0, end=buffer.length) => {
       if(end < start + length_codec.bytes)
         throw new Error('input buffer out of bounds')
       var length = length_codec.decode(buffer, start)
