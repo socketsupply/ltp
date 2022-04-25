@@ -1,51 +1,64 @@
 
-module.exports = function (type_codec, length_codec, codec_lookup, decodePointer) {
-  //[type, length, value]
-  //not [length, type, value] because then it's the same as
 
-  function encode ({type, value}, buffer, start) {
-    type_codec.encode(type, buffer, start)
-    var bytes = type_codec.bytes
-    //note, length is written after the value is,
-    //so we don't have to call encodingLength and then encode
-    var length_pos = start + type_codec.bytes
+//en/decode a collection of types,
+//every type must have a type field in the same place
+//and a length field in the same place.
+function getType(schema) {
+  for(var i = 0; i < schema.length; i++)
+    if(schema[i].isType)
+      return i
+  return -1
+}
 
-    var codec = codec_lookup(type)
-    codec.encode(value, buffer, start + type_codec.bytes + length_codec.bytes)
-
-    var value_length = codec.encode.bytes
-    bytes += value_length
-    length_codec.encode(value_length, buffer, length_pos)
-
-    encode.bytes = value_length + length_codec.bytes + type_codec.bytes
+module.exports = function (codex) {
+  //verify that every item has type/length
+  var map = {}, nameMap = {}
+  var type_position
+  var type_field
+  var type_field = codex[0].schema[getType(codex[0].schema)]
+  map[type_field.typeName] = map[type_field.typeValue] = codex[0]
+  nameMap[type_field.typeValue] = type_field.typeName
+    
+  for(var i = 1; i < codex.length; i++) {
+    var codec = codex[i]
+    var _type_field = codec.schema[getType(codec.schema)]
+    if(!_type_field) throw new Error('codec:'+i+', is missing a type field')
+      if(type_field.position !== _type_field.position)
+        throw new Error('codec:'+i+', has type field in wrong position')
+      if(type_field.direct.type !== _type_field.direct.type)
+        throw new Error('codec:'+i+', has different type field')
+    map[_type_field.typeName] = map[_type_field.typeValue] = codec
+    nameMap[_type_field.typeValue] = _type_field.typeName
   }
 
-  function decode (buffer, start, end=buffer.length) {
-    var type = type_codec.decode(buffer, start, end)
-    var length = length_codec.decode(buffer, start + type_codec.bytes, end)
-    var _start = start + type_codec.bytes + length_codec.bytes
-    var _end = Math.min(end, _start+length)
-    var codec = codec_lookup(type)
-    decode.bytes = end - start
-    if(decodePointer)
-      return {type, length, value:_start}
-
-    var value = codec.decode(buffer, _start , end)
-    return {type, value}
+  function decodeType(buffer, start, end) {
+    return type_field.direct.decode(buffer, start + type_field.position, end)
   }
 
   return {
-    type:'any',
-    encode, decode,
-    encodingLength: ({type, value}) => {
-     return type_codec.bytes + length_codec.bytes + codec_lookup(type).encodingLength(value)
+    type: 'any2',
+    schema: codex,
+    encode: function (value, buffer, start, end) {
+      var codec = map[value[type_field.name]]
+      return codec.encode(value, buffer, start, end)
     },
-    encodedLength: (buffer, start) => {
-      return type_codec.bytes + length_codec.decode(buffer, start + type_codec.bytes) + length_codec.bytes
-    }
+    decodeType,
+    decode: function (buffer, start=0, end=buffer.length) {
+      var tvalue = decodeType(buffer, start, end)
+      var codec = map[tvalue]
+      if(!codec) return null
+      var obj = codec.decode(buffer, start, end) 
+      obj[type_field.name] = nameMap[tvalue]
+      return obj
+    },
+    encodingLength: function (value, buffer, start, end) {
+      var codec = map[value[type_field.name]]
+      return codec.encodingLength(value, buffer, start, end)
+    },
+    encodedLength: function (buffer, start, end) {
+      var tvalue = decodeType(buffer, start, end)
+      var codec = map[tvalue]
+      return codec.encodedLength(buffer, start, end)
+    },
   }
-}
-
-module.exports.AnyPointer = function (type, length, lookup) {
-  return module.exports(type, length, lookup, true)
 }
