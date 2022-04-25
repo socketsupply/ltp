@@ -4,17 +4,17 @@ var {TypeField, DirectField, PointedField, LengthField} = ltp = require('../')
 var {u32, u8, string_u8} = require('../codex')
 var Any = require('../any')
 var schemas = [
-  [ //type1 direct only
+  [ //type 0x11 direct only
     TypeField('type', 0, u8, 0x11, 'direct_only'),
     LengthField('length', 1, u8),
     DirectField('count', 3, u32)
   ],
-  [ //type1 direct only
+  [ //type 0x22 pointed only
     TypeField('type', 0, u8, 0x22, 'pointed_only'),
     LengthField('length', 1, u8),
     PointedField('name', 2, u8, string_u8)
   ],
-  [ //type1 direct only
+  [ //type 0x33 direct and pointed
     TypeField('type', 0, u8, 0x33, 'direct_and_pointed'),
     LengthField('length', 1, u8),
     DirectField('count', 2, u32),
