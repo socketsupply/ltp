@@ -1,6 +1,6 @@
 var LengthDelimited = require('./length-delimited')
 var V = require('varstruct')
-
+var inspect = require('util').inspect
 function BufferCodec () {
   function encode (value, buffer, start) {
     value.copy(buffer, start)
@@ -80,7 +80,7 @@ var string = {
   type: 'string',
   encode: (value, buffer, start) => {
     var bytes = Buffer.byteLength(value)
-    if('string' !== typeof value) throw new Error('expected a string, got:'+JSON.stringify(string))
+    if('string' !== typeof value) throw new Error('expected a string, got:'+inspect(value))
     buffer.write(value, start, start+bytes)
     buffer[start+bytes+1] = 0
     string.encode.bytes = bytes+1
