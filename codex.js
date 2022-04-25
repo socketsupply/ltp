@@ -1,6 +1,22 @@
 var LengthDelimited = require('./length-delimited')
 var V = require('varstruct')
 
+function BufferCodec () {
+  function encode (value, buffer, start) {
+    value.copy(buffer, start)
+    return encode.bytes = value.length
+  }
+  function decode (buffer, start=0, _end=buffer.length) {
+    var value = buffer.slice(start, _end)
+    decode.bytes = value.length
+    return value
+  }
+  return  {
+    encode, decode,
+    encodingLength: (value) => { return value.length }
+  }
+}
+
 var codex = {
   u8: {
     type: 'u8',
@@ -33,7 +49,7 @@ var codex = {
     type: 'f64',
     encode: (value, buffer, start=0) => { buffer.writeDoubleLE(value, start) },
     decode: (buffer, start=0) => buffer.readDoubleLE(start),
-    bytes: 4,
+    bytes: 8,
   },
   u64: {
     type: 'u64',
@@ -55,10 +71,7 @@ var codex = {
     },
     bytes: 8
   },
-  buffer: {
-    encode: (value, buffer, start) => { value.copy(buffer, start); this.encode.bytes = value.length },
-    decode: (buffer, start, _end) => { value.copy(buffer, start); this.encode.bytes = value.length },
-  }
+  buffer: BufferCodec()
   //i8, i16, i32, i64 ...
 
 }
@@ -67,6 +80,7 @@ var string = {
   type: 'string',
   encode: (value, buffer, start) => {
     var bytes = Buffer.byteLength(value)
+    if('string' !== typeof value) throw new Error('expected a string, got:'+JSON.stringify(string))
     buffer.write(value, start, start+bytes)
     buffer[start+bytes+1] = 0
     string.encode.bytes = bytes+1
@@ -87,6 +101,10 @@ codex.string_u16 = LengthDelimited(0, codex.u16, string)
 codex.string_u32 = LengthDelimited(0, codex.u32, string)
 //codex.string_u64 = LengthDelimited(0x10, codex.64, string)
 
+codex.buffer_u8  = LengthDelimited(0, codex.u8,  codex.buffer)
+codex.buffer_u16 = LengthDelimited(0, codex.u16, codex.buffer)
+codex.buffer_u32 = LengthDelimited(0, codex.u32, codex.buffer)
+
 function FixedBuffer (bytes) {
   var c = V.Buffer(bytes)
   c.bytes = bytes
@@ -94,6 +112,7 @@ function FixedBuffer (bytes) {
 }
 
 //common fixed buffer sizes
+codex.fixed_4 = FixedBuffer(4) //ipv4
 codex.fixed_16 = FixedBuffer(16) //ipv6
 codex.fixed_20 = FixedBuffer(20) //sha1
 codex.fixed_32 = FixedBuffer(32) //sha256
