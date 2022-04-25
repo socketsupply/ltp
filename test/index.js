@@ -335,7 +335,7 @@ tape('handle invalid fields out of bounds', function (t) {
   console.log(b) // [length, relp, length, 'h' 'i']
   t.deepEqual(codec.decode(b, 0), {length: 6, hello: 'hi'})
 
-  var string_length = {message: /string length out of bounds/}
+  var string_length = {message: /length out of bounds/}
   var relative_pointer  = {message: /relative pointer out of bounds/}
   var length_field = {message: /length field out of bounds/}
 
@@ -369,7 +369,7 @@ tape('handle invalid fields out of bounds, array', function (t) {
   t.deepEqual(codec.decode(b, 0), input)
   console.log(b) // [length, relp, length, 'h' 'i']
 
-  var string_length = {message: /string length out of bounds/}
+  var string_length = {message: /length out of bounds/}
   var relative_pointer  = {message: /relative pointer out of bounds/}
   var array_length  = {message: /array length out of bounds/}
   var b2 = Buffer.from(b); b2[7] = b2[7]+1
