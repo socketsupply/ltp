@@ -562,6 +562,39 @@ tape('getNext, variable sized, length delimited', function (t) {
   t.end()
 })
 
+
+tape('length delimited, with offset', function (t) {
+  var schema = [
+    ltp.LengthField('length', 0, ltp.codex.u16, 2),
+    ltp.Field('first', 2, ltp.codex.u16, ltp.codex.string_u8),
+    ltp.Field('last', 4, ltp.codex.u16, ltp.codex.string_u8),
+    ltp.Field('age', 6, ltp.codex.u16)
+  ]
+
+  t.equal(ltp.getMinimumSize(schema), 8)
+
+  var b = Buffer.alloc(1024)
+
+  var object_c = ltp.ObjectCodec(schema)
+  var expected = [
+    {first: 'alice', last: 'algorithm', age: 36},
+    {first: 'bob', last: 'binary', age: 64},
+    {first: 'carol', last: 'commutative', age: 12}
+  ]
+
+  var l = object_c.encodingLength(expected[0])
+  console.log(l)
+  var l = object_c.encodingLength(expected[0])
+  var b = Buffer.alloc(l)
+  object_c.encode(expected[0], b)
+  t.equal(object_c.encodedLength(b, 0), l)
+  console.log(object_c.dereference(b, 0, 'length'))
+  console.log(object_c.reflect(0).decode(b, 0))
+  console.log(b)
+  t.end()
+})
+return
+
 tape('getNext, single variable sized field', function (t) {
   var schema = [
     ltp.Field('age', 0, ltp.codex.u16),
