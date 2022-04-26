@@ -1,7 +1,7 @@
 {
-  "name": "ltp",
+  "name": "@socketsupply/ltp",
   "version": "2.0.0",
-  "description": "A schemafull binary format, designed for inplace reads, like a simpler version of captnproto",
+  "description": "A schemaful parseless binary format, like a simpler version of captnproto. fast access to fields without allocating memory",
   "main": "index.js",
   "directories": {
     "test": "test"
@@ -10,9 +10,23 @@
     "build": "node test/generate.js > test/build/ltp.c && clang -nostdlib --target=wasm32 test/build/ltp.c -Wl,--no-entry -Wl,--export-all -o test/build/ltp.wasm",
     "test": "node test/index.js && node test/wasm.js && node test/any.js"
   },
-  "author": "",
+  "author": "Dominic Tarr",
   "license": "ISC",
   "dependencies": {
     "varstruct": "^6.1.3"
-  }
+  },
+  "devDependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/socketsupply/ltp.git"
+  },
+  "bugs": {
+    "url": "https://github.com/socketsupply/ltp/issues"
+  },
+  "homepage": "https://github.com/socketsupply/ltp#readme",
+  "keywords": [
+    "binary",
+    "parseless",
+    "format"
+  ]
 }
