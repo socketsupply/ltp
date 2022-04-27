@@ -23,33 +23,22 @@ var codex = {
     encode: (value, buffer, start) => {
       if(value > 0xff || value < 0) throw new Error('u8 value out of bounds')
       buffer[start] = value & 0xff
+      return 1
     },
     decode: (buffer, start) => buffer[start] & 0xff,
     bytes: 1,
   },
   u16: {
     type: 'u16',
-    encode: (value, buffer, start=0) => { buffer.writeUint16LE(value, start) },
+    encode: (value, buffer, start=0) => { buffer.writeUint16LE(value, start); return 2 },
     decode: (buffer, start=0) => buffer.readUint16LE(start),
     bytes: 2,
   },
   u32: {
     type: 'u32',
-    encode: (value, buffer, start=0) => { buffer.writeUint32LE(value, start) },
+    encode: (value, buffer, start=0) => { buffer.writeUint32LE(value, start); return 4 },
     decode: (buffer, start=0) => buffer.readUint32LE(start),
     bytes: 4,
-  },
-  f32: {
-    type: 'f32',
-    encode: (value, buffer, start=0) => { buffer.writeFloatLE(value, start) },
-    decode: (buffer, start=0) => buffer.readFloatLE(start),
-    bytes: 4,
-  },
-  f64: {
-    type: 'f64',
-    encode: (value, buffer, start=0) => { buffer.writeDoubleLE(value, start) },
-    decode: (buffer, start=0) => buffer.readDoubleLE(start),
-    bytes: 8,
   },
   u64: {
     type: 'u64',
@@ -63,6 +52,7 @@ var codex = {
         buffer.writeBigInt64LE(value*-1n, start)
       else
         buffer.writeBigInt64LE(value, start)
+      return 8
     },
     decode: (buffer, start) => {
       var value = buffer.readBigInt64LE(start)
@@ -70,6 +60,22 @@ var codex = {
       return value
     },
     bytes: 8
+  },
+  f32: {
+    type: 'f32',
+    encode: (value, buffer, start=0) => { buffer.writeFloatLE(value, start); return 4 },
+    decode: (buffer, start=0) => buffer.readFloatLE(start),
+    bytes: 4,
+  },
+  f64: {
+    type: 'f64',
+    encode: (value, buffer, start=0) => {
+      if('number' !== typeof value) throw new Error('expected number, got:'+inspect(value))
+      buffer.writeDoubleLE(value, start)
+      return 8
+    },
+    decode: (buffer, start=0) => buffer.readDoubleLE(start),
+    bytes: 8,
   },
   buffer: BufferCodec()
   //i8, i16, i32, i64 ...
