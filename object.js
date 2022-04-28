@@ -62,7 +62,7 @@ function ObjectCodec(schema) {
       //remember the bytes, if length is included
       if(field.isLength) {
         decode.bytes = value+(length_field.offset|0)
-        var _end = start + value
+        var _end = start + decode.bytes
         if(_end > end) throw new Error('length field out of bounds')
         //but a smaller value for end is acceptable.
         end = _end
