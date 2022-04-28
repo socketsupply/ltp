@@ -171,7 +171,7 @@ function decodeField (position, direct, pointed, buffer, start, end=buffer.lengt
 //    console.log('lo???g', {direct, start, position, end});
   //  console.log()
     //TODO XXX end is not big enough to contain: start + position + direct.bytes 
-    throw new Error('direct value out of bounds? :'+test+JSON.stringify({direct, start, position, end, test}))
+    throw new Error('direct value out of bounds? attempted to read '+direct.type+' at:'+ (start+position) + '(position:'+position+') end was:'+ end)
   }
 
   if(direct && !pointed)
