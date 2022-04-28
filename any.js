@@ -1,5 +1,5 @@
 
-
+var {isArray} = Array
 //en/decode a collection of types,
 //every type must have a type field in the same place
 //and a length field in the same place.
@@ -12,6 +12,13 @@ function getType(schema) {
 
 module.exports = function (codex) {
   //verify that every item has type/length
+
+  if(!isArray(codex)) {
+    var obj = codex
+    codex = []
+    for(var k in obj)
+      codex.push(obj[k])
+  } 
   var map = {}, nameMap = {}
   var type_position
   var type_field
@@ -43,6 +50,10 @@ module.exports = function (codex) {
       return codec.encode(value, buffer, start, end)
     },
     decodeType,
+    decodeTypeName: function (buffer, start, end) {
+      var type = decodeType(buffer, start, end)
+      return nameMap[type]
+    },
     decode: function (buffer, start=0, end=buffer.length) {
       var tvalue = decodeType(buffer, start, end)
       var codec = map[tvalue]
