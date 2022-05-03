@@ -20,13 +20,9 @@ function generateObjectCodec (prefix, name, schema, map) {
   function encode(field, decoder) {
     return `${prefix}encode__${name}_${field.name}`
   }
-  var args = [], ops = []
+  var args = [], ops_direct = [], ops_pointed = []
 
-  //perform two passes over the schema, encoding pointed, then direct fields,
-  //so the the length is known when it's time to write the length field.
-  //first pass, just do the pointed fields
   schema.forEach(function (field) {
-
     var {type, direct, pointed, position} = field
     var v_name = `v_${field.name}`
 
@@ -44,8 +40,8 @@ size_t ${encode(field)} (byte* buf, int ${v_name}_length, ${pointed.type}* ${v_n
   ltp_encode_relp__${direct.type}(buf+${position}, free);
   return ltp_encode__${pointed.type}(free, ${v_name}_length, ${v_name});
 }`)
-      args.push(`int v_${field.name}__length, ${pointed.type}* v_${field.name}`)
-      ops.push(`free += ${encode(field)}(buf, v_${field.name}__length, v_${field.name}, free)`)
+      args.push(`int v_${field.name}__length, ${pointed.type}* ${v_name}`)
+      ops_pointed.push(`free += ${encode(field)}(buf, ${v_name}__length, ${v_name}, free)`)
     }
 
     // Pointed only (implicit pointer, A SINGLE fixed position variable sized value)
@@ -61,19 +57,14 @@ size_t ${encode(field)} (byte* buf, int ${v_name}_length, ${pointed.type}* ${v_n
       return ltp_encode__${pointed.type}((byte*)(buf+${field.position}), ${v_name}_length, ${v_name});
     }`)
 
-      args.push(`int ${v_name}_length, ${field.pointed.type}* v_${field.name}`)
-      ops.push(`free += ${encode(field)}(buf, v_${field.name}_length, v_${field.name}, free)`)
+      args.push(`int ${v_name}_length, ${field.pointed.type}* ${v_name}`)
+      ops_pointed.push(`free += ${encode(field)}(buf, ${v_name}_length, ${v_name}, free)`)
     }
     //note, this sort of encode function, must copy another type data in.
     //would be best to return the bytes used (or, new pointer to next free space)
     //abstract-encoding returns the buffer, enabling allocating the buffer but that's not a great usecase) 
 
 
-  })
-  //second pass, just do direct fields
-  schema.forEach(function (field) {
-    var {type, direct, pointed, position} = field
-    var v_name = `v_${field.name}`
 
     if(field.pointed && 'array' === field.pointed.type) {
       //generate array access methods
@@ -93,16 +84,16 @@ size_t ${encode(field)} (byte* buf, int ${v_name}_length, ${pointed.type}* ${v_n
         ltp_encode__${direct.type}((byte*)(buf+${position}), (${direct.type})(free-buf));
       }
       `)     
-
-        ops.push(`${encode(field)}(buf, free);`)
-
-      }
-      else if(field.isType) {
         s += (`
   ${direct.type}* ${decode(field)} (byte* buf) {
     return ltp_decode__${direct.type}((byte*)(buf+${position}));
   }
   `)
+
+        ops_direct.push(`${encode(field)}(buf, free);`)
+
+      }
+      else if(field.isType) {
 
         //encoding the type, does not take args, because the schema defines the value
         s += (`
@@ -111,9 +102,14 @@ size_t ${encode(field)} (byte* buf, int ${v_name}_length, ${pointed.type}* ${v_n
   }
   `)     
 
+        s += (`
+  ${direct.type}* ${decode(field)} (byte* buf) {
+    return ltp_decode__${direct.type}((byte*)(buf+${position}));
+  }
+  `)
 
         //type does not appear in the args
-        ops.push(`${encode(field)}(buf)`)
+        ops_direct.push(`${encode(field)}(buf)`)
 
 
       }
@@ -134,7 +130,7 @@ size_t ${encode(field)} (byte* buf, int ${v_name}_length, ${pointed.type}* ${v_n
 
           args.push(`${direct.type}* ${v_name}`)
 
-          ops.push(`${encode(field)}(buf, v_${field.name})`)
+          ops_direct.push(`${encode(field)}(buf, v_${field.name})`)
 
         }
         else {
@@ -153,7 +149,7 @@ size_t ${encode(field)} (byte* buf, int ${v_name}_length, ${pointed.type}* ${v_n
 
           args.push(`${direct.type} ${v_name}`)
 
-          ops.push(`${encode(field)}(buf, v_${field.name})`)
+          ops_direct.push(`${encode(field)}(buf, v_${field.name})`)
 
         }
       }
@@ -167,7 +163,8 @@ size_t ${encode(field)} (byte* buf, int ${v_name}_length, ${pointed.type}* ${v_n
     s += `
   size_t ${prefix}encode__${name} (byte* buf, ${args.join(', ')}) {
     byte* free = buf+${min};
-    ${ops.map(e=>e+';').join('\n    ')}
+    ${ops_pointed.map(e=>e+';').join('\n    ')}
+    ${ops_direct.map(e=>e+';').join('\n    ')}
     return (size_t)(free - buf); 
   }`
   }
