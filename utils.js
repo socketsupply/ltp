@@ -89,6 +89,7 @@ var sizes = {
 
   f32: 4, f64: 8,
 
+  fixed_4: 4,
   fixed_16: 16,
   fixed_20: 20,
   fixed_32: 32,
@@ -100,10 +101,12 @@ function sizeOf(codec) {
     return codec.bytes
   if('string' === typeof codec.type && sizes[codec.type])
     return sizes[codec.type]
-  throw new Error('codec must be fixed size')
+  throw new Error('codec must be fixed size:'+JSON.stringify(codec))
 }
 
 function getMinimumSize(schema) {
+  if(!Array.isArray(schema))
+    throw new Error('expected schema object, got:'+schema)
   if(!schema.length) return 0 //or should an empty schema be a throw?
   var size = 0, fpvs = null
   for(var i = 0; i < schema.length; i++) {
@@ -114,7 +117,7 @@ function getMinimumSize(schema) {
       fpvs = field
   }
   if(fpvs && fpvs.position != size) {
-    throw new Error('fpvs must be in last position') 
+    throw new Error('fpvs must be in last position: '+JSON.stringify(fpvs)) 
   }
   return size   
 }
