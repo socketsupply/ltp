@@ -21,6 +21,12 @@ var schema = {
     {name: 'text', position: 96, /*direct: {type: 'u8'}, */pointed: {type: 'string_u16'}},
     {name: 'hash', position: 64, direct: {type: 'fixed_32', pointer: true}},
     {name: 'signature', position: 0, direct: {type: 'fixed_64', pointer: true}}
+  ],
+
+  typeLengthBuf: [
+    {name: 'type', position: 0, direct: {type:'u8'}, isType: true, typeValue: 0x99},
+    {name: 'length', position: 1, direct: {type:'u16'}, isLength: true},
+    {name: 'text', position: 3, /*direct: {type: 'u8'}, */pointed: {type: 'string_u16'}},
   ]
   
 
