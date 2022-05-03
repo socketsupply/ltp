@@ -22,65 +22,16 @@ function generateObjectCodec (prefix, name, schema, map) {
   }
   var args = [], ops = []
 
+  //perform two passes over the schema, encoding pointed, then direct fields,
+  //so the the length is known when it's time to write the length field.
+  //first pass, just do the pointed fields
   schema.forEach(function (field) {
-
-    if(field.pointed && 'array' === field.pointed.type) {
-      //generate array access methods
-      // decode_index__<schema>_<field>(buf, index)
-      // decode_length__<schema>_<field>(buf)
-      // for_each__<schema>_<field>(buf, each)
-    }
 
     var {type, direct, pointed, position} = field
     var v_name = `v_${field.name}`
 
-    //Direct value (fixed size only)
-    if(direct && !pointed) {
-      //check if it's a direct field, but we are handling it as a pointer
-      //for example, it's a fixed size array.
-      if(direct.pointer) {
-
-        s += (`
-  ${direct.type}* ${decode(field)} (byte* buf) {
-    return ltp_decode__${direct.type}((byte*)(buf+${position}));
-  }
-  `)
-
-        s += (`
-  void ${encode(field)} (byte* buf, ${direct.type}* ${v_name}) {
-    ltp_encode__${direct.type}((byte*)(buf+${position}), ${v_name});
-  }
-  `)     
-
-        args.push(`${direct.type}* ${v_name}`)
-
-        ops.push(`${encode(field)}(buf, v_${field.name})`)
-
-      }
-      else {
-
-        s += (`
-  ${direct.type} ${decode(field)} (byte* buf) {
-    return ltp_decode__${direct.type}((byte*)(buf+${position}));
-  }
-  `)
-
-        s += (`
-  void ${encode(field)} (byte* buf, ${direct.type} ${v_name}) {
-    ltp_encode__${direct.type}((byte*)(buf+${position}), ${v_name});
-  }
-  `)     
-
-        args.push(`${direct.type} ${v_name}`)
-
-        ops.push(`${encode(field)}(buf, v_${field.name})`)
-
-      }
-    }
-
     //Direct to Pointed - (variable size value)
-
-    else if(direct && pointed) {
+    if(direct && pointed) {
       //returns a pointer to the field type 
       //decode_${name}_${field.name} function returns a pointer to the input type.
      s +=(`
@@ -117,6 +68,97 @@ size_t ${encode(field)} (byte* buf, int ${v_name}_length, ${pointed.type}* ${v_n
     //would be best to return the bytes used (or, new pointer to next free space)
     //abstract-encoding returns the buffer, enabling allocating the buffer but that's not a great usecase) 
 
+
+  })
+  //second pass, just do direct fields
+  schema.forEach(function (field) {
+    var {type, direct, pointed, position} = field
+    var v_name = `v_${field.name}`
+
+    if(field.pointed && 'array' === field.pointed.type) {
+      //generate array access methods
+      // decode_index__<schema>_<field>(buf, index)
+      // decode_length__<schema>_<field>(buf)
+      // for_each__<schema>_<field>(buf, each)
+    }
+
+    //Direct value (fixed size only)
+    if(direct && !pointed) {
+      //check if it's a direct field, but we are handling it as a pointer
+      //for example, it's a fixed size array.
+      if(field.isLength) {
+
+            s += (`
+      void ${encode(field)} (byte* buf, byte* free) {
+        ltp_encode__${direct.type}((byte*)(buf+${position}), (${direct.type})(free-buf));
+      }
+      `)     
+
+        ops.push(`${encode(field)}(buf, free);`)
+
+      }
+      else if(field.isType) {
+        s += (`
+  ${direct.type}* ${decode(field)} (byte* buf) {
+    return ltp_decode__${direct.type}((byte*)(buf+${position}));
+  }
+  `)
+
+        //encoding the type, does not take args, because the schema defines the value
+        s += (`
+  void ${encode(field)} (byte* buf) {
+    ltp_encode__${direct.type}((byte*)(buf+${position}), ${field.typeValue});
+  }
+  `)     
+
+
+        //type does not appear in the args
+        ops.push(`${encode(field)}(buf)`)
+
+
+      }
+      else {
+        if(direct.pointer) {
+
+          s += (`
+    ${direct.type}* ${decode(field)} (byte* buf) {
+      return ltp_decode__${direct.type}((byte*)(buf+${position}));
+    }
+    `)
+
+          s += (`
+    void ${encode(field)} (byte* buf, ${direct.type}* ${v_name}) {
+      ltp_encode__${direct.type}((byte*)(buf+${position}), ${v_name});
+    }
+    `)     
+
+          args.push(`${direct.type}* ${v_name}`)
+
+          ops.push(`${encode(field)}(buf, v_${field.name})`)
+
+        }
+        else {
+
+          s += (`
+    ${direct.type} ${decode(field)} (byte* buf) {
+      return ltp_decode__${direct.type}((byte*)(buf+${position}));
+    }
+    `)
+
+          s += (`
+    void ${encode(field)} (byte* buf, ${direct.type} ${v_name}) {
+      ltp_encode__${direct.type}((byte*)(buf+${position}), ${v_name});
+    }
+    `)     
+
+          args.push(`${direct.type} ${v_name}`)
+
+          ops.push(`${encode(field)}(buf, v_${field.name})`)
+
+        }
+      }
+    }
+
   })
 
 
@@ -125,7 +167,7 @@ size_t ${encode(field)} (byte* buf, int ${v_name}_length, ${pointed.type}* ${v_n
     s += `
   size_t ${prefix}encode__${name} (byte* buf, ${args.join(', ')}) {
     byte* free = buf+${min};
-    ${ops.map(e=>e+';').join('\n  ')}
+    ${ops.map(e=>e+';').join('\n    ')}
     return (size_t)(free - buf); 
   }`
   }
@@ -133,8 +175,8 @@ size_t ${encode(field)} (byte* buf, int ${v_name}_length, ${pointed.type}* ${v_n
   return s + '\n'
 }
 
-module.exports = function (schemas, prefix='') {
-  var s = require('fs').readFileSync(path.join(__dirname, 'ltp.h'), 'utf8')
+module.exports = function (schemas, prefix='', includeHeader=true) {
+  var s = includeHeader ? require('fs').readFileSync(path.join(__dirname, 'ltp.h'), 'utf8') : ''
   for(var name in schemas)
     s += generateObjectCodec(prefix, name, schemas[name])
   return s
