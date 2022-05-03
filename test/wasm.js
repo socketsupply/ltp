@@ -283,3 +283,16 @@ tape('encode/decode fpvs', function (t) {
   t.end()
 
 })
+
+tape('encode/decode type/length', function (t) {
+  var start4 = start+1000
+  var string = 'LTP\x00'
+  memory.write(string, cstring2=start4+100, 'utf8')
+  var bytes = wasm.encode__typeLengthBuf(start4, 4, cstring2)
+  t.equal(wasm.decode__typeLengthBuf_type(start4), 0x99)
+  t.equal(wasm.decode__typeLengthBuf_length(start4), 1+2+2+4)
+
+  t.equal(bytes, 1+2 + 2+4)
+
+  t.end()
+})
