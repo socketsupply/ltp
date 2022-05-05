@@ -26,6 +26,11 @@ function generateObjectCodec (prefix, name, schema, map) {
     var {type, direct, pointed, position} = field
     var v_name = `v_${field.name}`
 
+    if(pointed)
+      if(!pointed.type) throw new Error('pointed codec must have type, was:'+JSON.stringify(field))
+    if(direct)
+      if(!direct.type) throw new Error('direct codec must have type, was:'+JSON.stringify(field))
+
     //Direct to Pointed - (variable size value)
     if(direct && pointed) {
       //returns a pointer to the field type 
