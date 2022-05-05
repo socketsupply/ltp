@@ -228,6 +228,7 @@ size_t ltp_encode__fixed_##X (byte* buf, char *buffer) { \
   return (size_t)X; \
 }
 
+typedef byte fixed_4[4];
 typedef byte fixed_16[16];
 typedef byte fixed_20[20];
 typedef byte fixed_32[32];
