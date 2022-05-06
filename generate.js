@@ -83,15 +83,14 @@ size_t ${encode(field)} (byte* buf, int ${v_name}_length, ${pointed.type}* ${v_n
       //check if it's a direct field, but we are handling it as a pointer
       //for example, it's a fixed size array.
       if(field.isLength) {
-
             s += (`
       void ${encode(field)} (byte* buf, byte* free) {
-        ltp_encode__${direct.type}((byte*)(buf+${position}), (${direct.type})(free-buf));
+        ltp_encode__${direct.type}((byte*)(buf+${position}), (${direct.type})(free-buf-${field.offset|0}));
       }
       `)     
         s += (`
   ${direct.type}* ${decode(field)} (byte* buf) {
-    return ltp_decode__${direct.type}((byte*)(buf+${position}));
+    return ltp_decode__${direct.type}((byte*)(buf+${position}+${field.offset|0}));
   }
   `)
 
