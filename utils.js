@@ -68,8 +68,6 @@ function DirectField (name, position, direct) {
 
 function LengthField (name, position, direct, offset=0) {
   assertFixedSize(direct)
-//  console.log("LengthField", {name, position, direct, isLength: true})
-//  if(position !== 0) throw new Error('length position must be zero')
   return {
     name, position, direct, isLength: true, offset
   }
@@ -167,12 +165,8 @@ function encodeField(position, direct, pointed, value, buffer, start, free) {
 }
 
 function decodeField (position, direct, pointed, buffer, start, end=buffer.length, allow_zero=false) {
-//  if(!direct)
-//    throw new Error('field must have direct codec')
   var test = direct && start + position + direct.bytes > end
   if(test) {
-//    console.log('lo???g', {direct, start, position, end});
-  //  console.log()
     //TODO XXX end is not big enough to contain: start + position + direct.bytes 
     throw new Error('direct value out of bounds? attempted to read '+direct.type+' at:'+ (start+position) + '(position:'+position+') end was:'+ end)
   }
