@@ -234,6 +234,8 @@ typedef byte fixed_20[20];
 typedef byte fixed_32[32];
 typedef byte fixed_64[64];
 
+ltp_decode__fixed(4); //ipv4 address
+ltp_encode__fixed(4); 
 
 ltp_decode__fixed(16); //ipv6 address
 ltp_encode__fixed(16);
