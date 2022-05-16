@@ -26,6 +26,21 @@ function generateObjectCodec (prefix, name, schema, map) {
     return `(${type}${isPointer ? '*' : ''})${expression}`
   }
 
+  function decode_direct(field) {
+    return `
+    ${field.direct.type} ${decode(field)} (byte* buf) {
+      return ltp_decode__${field.direct.type}((byte*)(buf+${field.position}));
+    }
+    `
+  }
+  function encode_direct(field, value='v_'+field.name) {
+    return `
+    void ${encode(field)} (byte* buf, ${field.direct.type} ${value}) {
+      ltp_encode__${field.direct.type}((byte*)(buf+${field.position}), ${value});
+    }
+    `
+  }
+
   function decode_relp (direct, position) {
     return `ltp_decode_relp__${direct.type}(buf+${position})`
   }
@@ -54,7 +69,6 @@ size_t ${encode(field)} (byte* buf, int ${v_name}_length, ${pointed.type}* ${v_n
   ${encode_relp(direct, position)}
   return ltp_encode__${pointed.type}(free, ${v_name}_length, ${v_name});
 }`
-
   }
 
   function decode_fpvs (field) {
@@ -101,7 +115,6 @@ size_t ${encode(field)} (byte* buf, int ${v_name}_length, ${pointed.type}* ${v_n
     //note, this sort of encode function, must copy another type data in.
     //would be best to return the bytes used (or, new pointer to next free space)
     //abstract-encoding returns the buffer, enabling allocating the buffer but that's not a great usecase) 
-
 
 
     if(field.pointed && 'array' === field.pointed.type) {
@@ -172,17 +185,9 @@ size_t ${encode(field)} (byte* buf, int ${v_name}_length, ${pointed.type}* ${v_n
         }
         else {
 
-          s += (`
-    ${direct.type} ${decode(field)} (byte* buf) {
-      return ltp_decode__${direct.type}((byte*)(buf+${position}));
-    }
-    `)
+          s += decode_direct(field)
 
-          s += (`
-    void ${encode(field)} (byte* buf, ${direct.type} ${v_name}) {
-      ltp_encode__${direct.type}((byte*)(buf+${position}), ${v_name});
-    }
-    `)     
+          s += (encode_direct(field))     
 
           args.push(`${direct.type} ${v_name}`)
 
