@@ -22,6 +22,11 @@ function generateObjectCodec (prefix, name, schema, map) {
   }
   var args = [], ops_direct = [], ops_pointed = []
 
+  function cast (type, isPointer, expression) {
+    return `(${type}${isPointer ? '*' : ''})${expression}`
+
+  }
+
   schema.forEach(function (field) {
     var {type, direct, pointed, position} = field
     var v_name = `v_${field.name}`
@@ -37,7 +42,7 @@ function generateObjectCodec (prefix, name, schema, map) {
       //decode_${name}_${field.name} function returns a pointer to the input type.
      s +=(`
 ${pointed.type}* ${decode(field)} (byte* buf) {
-  return (${pointed.type}*)ltp_decode_relp__${direct.type}(buf+${field.position});
+  return ${cast(pointed.type, true, `ltp_decode_relp__${direct.type}(buf+${field.position})`)} ;
 }
 `)
       s += (`
