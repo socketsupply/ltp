@@ -34,12 +34,40 @@ function generateObjectCodec (prefix, name, schema, map) {
     return `ltp_encode_relp__${direct.type}(buf+${position}, ${target});`
   }
 
-  function decode_pointed(field) {
+  function _decode_pointed(field, target) {
     return `
     ${field.pointed.type}* ${decode(field)} (byte* buf) {
-      return ${cast(field.pointed.type, true, decode_relp(field.direct, field.position))} ;
+      return ${cast(field.pointed.type, true, target)} ;
     }
     `
+  }
+
+  function decode_pointed(field) {
+    return _decode_pointed(field, decode_relp(field.direct, field.position))
+  }
+
+  function encode_pointed(field) {
+    var {pointed,direct, position} = field
+    var v_name = 'v_'+field.name
+    return `
+size_t ${encode(field)} (byte* buf, int ${v_name}_length, ${pointed.type}* ${v_name}, byte* free) {
+  ${encode_relp(direct, position)}
+  return ltp_encode__${pointed.type}(free, ${v_name}_length, ${v_name});
+}`
+
+  }
+
+  function decode_fpvs (field) {
+    return _decode_pointed(field, '(buf+'+field.position+')' )
+  }
+
+  function encode_fpvs (field) {
+    var {pointed,direct, position} = field
+    var v_name = 'v_'+field.name
+    return `
+    size_t ${encode(field)} (byte* buf, int ${v_name}_length, ${pointed.type}* ${v_name}, byte* free) {
+      return ltp_encode__${pointed.type}((byte*)(buf+${field.position}), ${v_name}_length, ${v_name});
+    }`
   }
 
   schema.forEach(function (field) {
@@ -55,12 +83,8 @@ function generateObjectCodec (prefix, name, schema, map) {
     if(direct && pointed) {
       //returns a pointer to the field type 
       //decode_${name}_${field.name} function returns a pointer to the input type.
-     s +=(decode_pointed(field))
-      s += (`
-size_t ${encode(field)} (byte* buf, int ${v_name}_length, ${pointed.type}* ${v_name}, byte* free) {
-  ${encode_relp(direct, position)}
-  return ltp_encode__${pointed.type}(free, ${v_name}_length, ${v_name});
-}`)
+      s +=(decode_pointed(field))
+      s += encode_pointed(field)
       args.push(`int v_${field.name}__length, ${pointed.type}* ${v_name}`)
       ops_pointed.push(`free += ${encode(field)}(buf, ${v_name}__length, ${v_name}, free)`)
     }
@@ -68,15 +92,8 @@ size_t ${encode(field)} (byte* buf, int ${v_name}_length, ${pointed.type}* ${v_n
     // Pointed only (implicit pointer, A SINGLE fixed position variable sized value)
     else if(!direct && pointed) {
       //generate encode/decode
-           s +=(`
-      ${pointed.type}* ${decode(field)} (byte* buf) {
-        return (${pointed.type}*)(buf+${field.position});
-      }`)
-
-      s += (`
-    size_t ${encode(field)} (byte* buf, int ${v_name}_length, ${pointed.type}* ${v_name}, byte* free) {
-      return ltp_encode__${pointed.type}((byte*)(buf+${field.position}), ${v_name}_length, ${v_name});
-    }`)
+      s += decode_fpvs(field)
+      s += encode_fpvs(field)
 
       args.push(`int ${v_name}_length, ${field.pointed.type}* ${v_name}`)
       ops_pointed.push(`free += ${encode(field)}(buf, ${v_name}_length, ${v_name}, free)`)
