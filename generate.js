@@ -24,7 +24,22 @@ function generateObjectCodec (prefix, name, schema, map) {
 
   function cast (type, isPointer, expression) {
     return `(${type}${isPointer ? '*' : ''})${expression}`
+  }
 
+  function decode_relp (direct, position) {
+    return `ltp_decode_relp__${direct.type}(buf+${position})`
+  }
+
+  function encode_relp (direct, position, target='free') {
+    return `ltp_encode_relp__${direct.type}(buf+${position}, ${target});`
+  }
+
+  function decode_pointed(field) {
+    return `
+    ${field.pointed.type}* ${decode(field)} (byte* buf) {
+      return ${cast(field.pointed.type, true, decode_relp(field.direct, field.position))} ;
+    }
+    `
   }
 
   schema.forEach(function (field) {
@@ -40,14 +55,10 @@ function generateObjectCodec (prefix, name, schema, map) {
     if(direct && pointed) {
       //returns a pointer to the field type 
       //decode_${name}_${field.name} function returns a pointer to the input type.
-     s +=(`
-${pointed.type}* ${decode(field)} (byte* buf) {
-  return ${cast(pointed.type, true, `ltp_decode_relp__${direct.type}(buf+${field.position})`)} ;
-}
-`)
+     s +=(decode_pointed(field))
       s += (`
 size_t ${encode(field)} (byte* buf, int ${v_name}_length, ${pointed.type}* ${v_name}, byte* free) {
-  ltp_encode_relp__${direct.type}(buf+${position}, free);
+  ${encode_relp(direct, position)}
   return ltp_encode__${pointed.type}(free, ${v_name}_length, ${v_name});
 }`)
       args.push(`int v_${field.name}__length, ${pointed.type}* ${v_name}`)
