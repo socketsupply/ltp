@@ -11,7 +11,7 @@ create a data structure.
 High performance and simplicity usually go together. We often think of high
 performance as "more power". With, for example, a car, you can put in a larger
 engine and burn more fuel, faster. But with software, that's wrong. To make
-software faster you can only take away unnecessary work. Often, somethin
+software faster you can only take away unnecessary work. Often, something
 designed for simplicity is quite fast, because simplicity must also avoid
 unnecessary work. We also like simplicity because it makes it _faster to understand_.
 
