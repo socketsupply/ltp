@@ -22,21 +22,21 @@ function generateObjectCodec (prefix, name, schema, map) {
   }
   var args = [], ops_direct = [], ops_pointed = []
 
-  function type(codec, pointer=codec.pointer) {
+  function Type(codec, pointer=codec.pointer) {
     return codec.type+(pointer?'*':'')
   }
   //TODO change to cast(type(codec), expression)
   function cast (_type, isPointer, expression) {
     if('string' !== typeof _type) throw new Error('type must be string, was:'+JSON.stringify(_type))
-    return '('+type({type:_type, pointer: isPointer})+')'+expression
+    return '('+Type({type:_type, pointer: isPointer})+')'+expression
   }
   function def (codec, name, pointer=codec.pointer) {
-    return type(codec, pointer) + ' ' + name
+    return Type(codec, pointer) + ' ' + name
   }
 
   function decode_direct(field) {
     return `
-    ${type(field.direct)} ${decode(field)} (byte* buf) {
+    ${Type(field.direct)} ${decode(field)} (byte* buf) {
       return ltp_decode__${field.direct.type}((byte*)(buf+${field.position}));
     }
     `
@@ -47,7 +47,7 @@ function generateObjectCodec (prefix, name, schema, map) {
   function call(fun, args) {
     return fun + '(' + args.join(', ') + ')'
   }
-  function encode_direct(field, def = type(field.direct)+' v_'+field.name, value='v_'+field.name) {
+  function encode_direct(field, def = Type(field.direct)+' v_'+field.name, value='v_'+field.name) {
     return `
     void ${encode(field)} (byte* buf ${def ? ', '+def : def}) {
       ltp_encode__${field.direct.type}((byte*)(buf+${field.position}), ${value});
@@ -66,7 +66,7 @@ function generateObjectCodec (prefix, name, schema, map) {
 
   function _decode_pointed(field, target) {
     return `
-    ${type(field.pointed, true)} ${decode(field)} (byte* buf) {
+    ${Type(field.pointed, true)} ${decode(field)} (byte* buf) {
       return ${cast(field.pointed.type, true, target)} ;
     }
     `
