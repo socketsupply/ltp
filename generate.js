@@ -19,8 +19,10 @@ function Cast (type, expression, _expression) {
   if('string' !== typeof type) throw new Error('type must be string, was:'+JSON.stringify(type))
   return '('+type+')'+expression
 }
-function Def (codec, name, pointer=codec.pointer) {
-  return Type(codec, pointer) + ' ' + name
+function Def (type, name, _name) {
+  if(_name) throw new Error('first arg must be type')
+  
+  return type + ' ' + name
 }
 function Call(fun, args) {
   return fun + '(' + args.join(', ') + ')'
