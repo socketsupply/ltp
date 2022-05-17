@@ -11,7 +11,10 @@ typedef short int     i16;
 typedef int           i32;
 typedef long long int i64;
 
-typedef u8 byte;
+typedef unsigned int usize;
+
+typedef unsigned char byte;
+typedef byte u8;
 ///*
 typedef byte string_u8;
 typedef byte string_u16;
