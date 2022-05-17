@@ -10,6 +10,26 @@ function size(type) {
   return `sizeof(${type})`
 }
 
+function Type(codec, pointer=codec.pointer) {
+  return codec.type+(pointer?'*':'')
+}
+//TODO change to Cast(type(codec), expression)
+function Cast (_type, isPointer, expression) {
+  if('string' !== typeof _type) throw new Error('type must be string, was:'+JSON.stringify(_type))
+  return '('+Type({type:_type, pointer: isPointer})+')'+expression
+}
+function Def (codec, name, pointer=codec.pointer) {
+  return Type(codec, pointer) + ' ' + name
+}
+function Call(fun, args) {
+  return fun + '(' + args.join(', ') + ')'
+}
+function Func (type, name, args, statements) {
+  var last = statements.pop()
+  return `${type} ${name} (${args.filter(Boolean).join(', ')}) {\n` +
+      [statements, (type!='void'?'return ': '')+ last, ''].join(';\n') + '\n}'
+}
+
 function generateObjectCodec (prefix, name, schema, map) {
   var s = ''
   var min = ltp.getMinimumSize(schema)
@@ -22,32 +42,18 @@ function generateObjectCodec (prefix, name, schema, map) {
   }
   var args = [], ops_direct = [], ops_pointed = []
 
-  function Type(codec, pointer=codec.pointer) {
-    return codec.type+(pointer?'*':'')
-  }
-  //TODO change to cast(type(codec), expression)
-  function cast (_type, isPointer, expression) {
-    if('string' !== typeof _type) throw new Error('type must be string, was:'+JSON.stringify(_type))
-    return '('+Type({type:_type, pointer: isPointer})+')'+expression
-  }
-  function def (codec, name, pointer=codec.pointer) {
-    return Type(codec, pointer) + ' ' + name
-  }
-
   function decode_direct(field) {
-    return `
-    ${Type(field.direct)} ${decode(field)} (byte* buf) {
-      return ltp_decode__${field.direct.type}((byte*)(buf+${field.position}));
-    }
-    `
-  }
-  function ret (value) {
-    return 'return '+value+';'
-  }  
-  function call(fun, args) {
-    return fun + '(' + args.join(', ') + ')'
+    return Func(Type(field.direct), decode(field), [def_bufp], [
+      Call(`ltp_decode__${field.direct.type}`, [`buf+${field.position}`])
+    ])
   }
   function encode_direct(field, def = Type(field.direct)+' v_'+field.name, value='v_'+field.name) {
+    return Func('void', encode(field), [def_bufp, def], [
+      Call(`ltp_encode__${field.direct.type}`, [
+        Cast('byte', true, `buf+${field.position}`),
+        value
+      ])
+    ])
     return `
     void ${encode(field)} (byte* buf ${def ? ', '+def : def}) {
       ltp_encode__${field.direct.type}((byte*)(buf+${field.position}), ${value});
@@ -56,18 +62,17 @@ function generateObjectCodec (prefix, name, schema, map) {
   }
 
   function decode_relp (direct, position) {
-//    return `ltp_decode_relp__${direct.type}(buf+${position})`
-    return call(`ltp_decode_relp__${direct.type}`, [`buf+${position}`])
+    return Call(`ltp_decode_relp__${direct.type}`, [`buf+${position}`])
   }
 
   function encode_relp (direct, position, target='free') {
-    return call(`ltp_encode_relp__${direct.type}`, [`buf+${position}`, target])
+    return Call(`ltp_encode_relp__${direct.type}`, [`buf+${position}`, target])
   }
 
   function _decode_pointed(field, target) {
     return `
     ${Type(field.pointed, true)} ${decode(field)} (byte* buf) {
-      return ${cast(field.pointed.type, true, target)} ;
+      return ${Cast(field.pointed.type, true, target)} ;
     }
     `
   }
@@ -90,8 +95,8 @@ size_t ${encode(field)} (byte* buf, int ${v_name}_length, ${pointed.type}* ${v_n
     return _decode_pointed(field, '(buf+'+field.position+')' )
   }
 
-  var def_freep = def({type:'byte', pointer: true}, 'free')
-  var def_bufp = def({type:'byte', pointer: true}, 'buf')
+  var def_freep = Def({type:'byte', pointer: true}, 'free')
+  var def_bufp = Def({type:'byte', pointer: true}, 'buf')
 
   function encode_fpvs (field) {
     var {pointed,direct, position} = field
@@ -117,8 +122,8 @@ size_t ${encode(field)} (byte* buf, int ${v_name}_length, ${pointed.type}* ${v_n
       //decode_${name}_${field.name} function returns a pointer to the input type.
       s +=(decode_pointed(field))
       s += encode_pointed(field)
-      args.push(def({type:'u32'}, v_name+'__length', false))
-      args.push(def(field.pointed, v_name, true))
+      args.push(Def({type:'u32'}, v_name+'__length', false))
+      args.push(Def(field.pointed, v_name, true))
       ops_pointed.push(`free += ${encode(field)}(buf, ${v_name}__length, ${v_name}, free)`)
     }
 
@@ -128,8 +133,8 @@ size_t ${encode(field)} (byte* buf, int ${v_name}_length, ${pointed.type}* ${v_n
       s += decode_fpvs(field)
       s += encode_fpvs(field)
 
-      args.push(def({type:'u32'}, v_name+'__length', false))
-      args.push(def(field.pointed, v_name, true))
+      args.push(Def({type:'u32'}, v_name+'__length', false))
+      args.push(Def(field.pointed, v_name, true))
       ops_pointed.push(`free += ${encode(field)}(buf, ${v_name}__length, ${v_name}, free)`)
     }
     //note, this sort of encode function, must copy another type data in.
@@ -150,10 +155,10 @@ size_t ${encode(field)} (byte* buf, int ${v_name}_length, ${pointed.type}* ${v_n
       //for example, it's a fixed size array.
 
       if(field.isLength) {
-        s += encode_direct(field, def_freep, cast(direct.type, false, `(free-buf-${field.offset|0})`)) 
+        s += encode_direct(field, def_freep, Cast(direct.type, false, `(free-buf-${field.offset|0})`)) 
         s += decode_direct(field)
 
-        ops_direct.push(call(encode(field), ['buf', 'free']))
+        ops_direct.push(Call(encode(field), ['buf', 'free']))
 
       }
       else if(field.isType) {
@@ -163,15 +168,15 @@ size_t ${encode(field)} (byte* buf, int ${v_name}_length, ${pointed.type}* ${v_n
         s += decode_direct(field)
 
         //type does not appear in the args
-        ops_direct.push(call(encode(field), ['buf']))
+        ops_direct.push(Call(encode(field), ['buf']))
 
       }
       else {
         s += decode_direct(field)
         s += (encode_direct(field))     
 
-        args.push(def(direct, v_name))
-        ops_direct.push(call(encode(field), ['buf', v_name]))
+        args.push(Def(direct, v_name))
+        ops_direct.push(Call(encode(field), ['buf', v_name]))
       }
     }
 
