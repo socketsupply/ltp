@@ -26,9 +26,9 @@ function generateObjectCodec (prefix, name, schema, map) {
     return codec.type+(pointer?'*':'')
   }
   //TODO change to cast(type(codec), expression)
-  function cast (type, isPointer, expression) {
-    if('string' !== typeof type) throw new Error('type must be string, was:'+JSON.stringify(type))
-    return `(${type}${isPointer ? '*' : ''})${expression}`
+  function cast (_type, isPointer, expression) {
+    if('string' !== typeof _type) throw new Error('type must be string, was:'+JSON.stringify(_type))
+    return '('+type({type:_type, pointer: isPointer})+')'+expression
   }
   function def (codec, name, pointer=codec.pointer) {
     return type(codec, pointer) + ' ' + name
@@ -41,6 +41,12 @@ function generateObjectCodec (prefix, name, schema, map) {
     }
     `
   }
+  function ret (value) {
+    return 'return '+value+';'
+  }  
+  function call(fun, args) {
+    return fun + '(' + args.join(', ') + ')'
+  }
   function encode_direct(field, def = type(field.direct)+' v_'+field.name, value='v_'+field.name) {
     return `
     void ${encode(field)} (byte* buf ${def ? ', '+def : def}) {
@@ -50,16 +56,17 @@ function generateObjectCodec (prefix, name, schema, map) {
   }
 
   function decode_relp (direct, position) {
-    return `ltp_decode_relp__${direct.type}(buf+${position})`
+//    return `ltp_decode_relp__${direct.type}(buf+${position})`
+    return call(`ltp_decode_relp__${direct.type}`, [`buf+${position}`])
   }
 
   function encode_relp (direct, position, target='free') {
-    return `ltp_encode_relp__${direct.type}(buf+${position}, ${target});`
+    return call(`ltp_encode_relp__${direct.type}`, [`buf+${position}`, target])
   }
 
   function _decode_pointed(field, target) {
     return `
-    ${field.pointed.type}* ${decode(field)} (byte* buf) {
+    ${type(field.pointed, true)} ${decode(field)} (byte* buf) {
       return ${cast(field.pointed.type, true, target)} ;
     }
     `
@@ -74,7 +81,7 @@ function generateObjectCodec (prefix, name, schema, map) {
     var v_name = 'v_'+field.name
     return `
 size_t ${encode(field)} (byte* buf, int ${v_name}_length, ${pointed.type}* ${v_name}, byte* free) {
-  ${encode_relp(direct, position)}
+  ${encode_relp(direct, position)};
   return ltp_encode__${pointed.type}(free, ${v_name}_length, ${v_name});
 }`
   }
@@ -110,7 +117,8 @@ size_t ${encode(field)} (byte* buf, int ${v_name}_length, ${pointed.type}* ${v_n
       //decode_${name}_${field.name} function returns a pointer to the input type.
       s +=(decode_pointed(field))
       s += encode_pointed(field)
-      args.push(`int v_${field.name}__length, ${def(pointed, v_name, true)}`)
+      args.push(def({type:'u32'}, v_name+'__length', false))
+      args.push(def(field.pointed, v_name, true))
       ops_pointed.push(`free += ${encode(field)}(buf, ${v_name}__length, ${v_name}, free)`)
     }
 
@@ -120,8 +128,9 @@ size_t ${encode(field)} (byte* buf, int ${v_name}_length, ${pointed.type}* ${v_n
       s += decode_fpvs(field)
       s += encode_fpvs(field)
 
-      args.push(`int ${v_name}_length, ${def(field.pointed, v_name, true)}`)
-      ops_pointed.push(`free += ${encode(field)}(buf, ${v_name}_length, ${v_name}, free)`)
+      args.push(def({type:'u32'}, v_name+'__length', false))
+      args.push(def(field.pointed, v_name, true))
+      ops_pointed.push(`free += ${encode(field)}(buf, ${v_name}__length, ${v_name}, free)`)
     }
     //note, this sort of encode function, must copy another type data in.
     //would be best to return the bytes used (or, new pointer to next free space)
@@ -144,7 +153,7 @@ size_t ${encode(field)} (byte* buf, int ${v_name}_length, ${pointed.type}* ${v_n
         s += encode_direct(field, def_freep, cast(direct.type, false, `(free-buf-${field.offset|0})`)) 
         s += decode_direct(field)
 
-        ops_direct.push(`${encode(field)}(buf, free);`)
+        ops_direct.push(call(encode(field), ['buf', 'free']))
 
       }
       else if(field.isType) {
@@ -154,8 +163,7 @@ size_t ${encode(field)} (byte* buf, int ${v_name}_length, ${pointed.type}* ${v_n
         s += decode_direct(field)
 
         //type does not appear in the args
-        ops_direct.push(`${encode(field)}(buf)`)
-
+        ops_direct.push(call(encode(field), ['buf']))
 
       }
       else {
@@ -163,7 +171,7 @@ size_t ${encode(field)} (byte* buf, int ${v_name}_length, ${pointed.type}* ${v_n
         s += (encode_direct(field))     
 
         args.push(def(direct, v_name))
-        ops_direct.push(`${encode(field)}(buf, ${v_name})`)
+        ops_direct.push(call(encode(field), ['buf', v_name]))
       }
     }
 
