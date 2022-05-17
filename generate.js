@@ -14,9 +14,10 @@ function Type(codec, pointer=codec.pointer) {
   return codec.type+(pointer?'*':'')
 }
 //TODO change to Cast(type(codec), expression)
-function Cast (_type, isPointer, expression) {
-  if('string' !== typeof _type) throw new Error('type must be string, was:'+JSON.stringify(_type))
-  return '('+Type({type:_type, pointer: isPointer})+')'+expression
+function Cast (type, expression, _expression) {
+  if(_expression) throw new Error('first arg must be type')
+  if('string' !== typeof type) throw new Error('type must be string, was:'+JSON.stringify(type))
+  return '('+type+')'+expression
 }
 function Def (codec, name, pointer=codec.pointer) {
   return Type(codec, pointer) + ' ' + name
@@ -29,6 +30,8 @@ function Func (type, name, args, statements) {
   return `${type} ${name} (${args.filter(Boolean).join(', ')}) {\n` +
       [statements, (type!='void'?'return ': '')+ last, ''].join(';\n') + '\n}'
 }
+
+var ByteP = Type({type:'byte', pointer: true})
 
 function generateObjectCodec (prefix, name, schema, map) {
   var s = ''
@@ -50,7 +53,7 @@ function generateObjectCodec (prefix, name, schema, map) {
   function encode_direct(field, def = Type(field.direct)+' v_'+field.name, value='v_'+field.name) {
     return Func('void', encode(field), [def_bufp, def], [
       Call(`ltp_encode__${field.direct.type}`, [
-        Cast('byte', true, `buf+${field.position}`),
+        Cast(ByteP, `buf+${field.position}`),
         value
       ])
     ])
@@ -72,7 +75,7 @@ function generateObjectCodec (prefix, name, schema, map) {
   function _decode_pointed(field, target) {
     return `
     ${Type(field.pointed, true)} ${decode(field)} (byte* buf) {
-      return ${Cast(field.pointed.type, true, target)} ;
+      return ${Cast(ByteP, target)} ;
     }
     `
   }
@@ -84,11 +87,12 @@ function generateObjectCodec (prefix, name, schema, map) {
   function encode_pointed(field) {
     var {pointed,direct, position} = field
     var v_name = 'v_'+field.name
-    return `
-size_t ${encode(field)} (byte* buf, int ${v_name}_length, ${pointed.type}* ${v_name}, byte* free) {
-  ${encode_relp(direct, position)};
-  return ltp_encode__${pointed.type}(free, ${v_name}_length, ${v_name});
-}`
+    return Func('size_t', encode(field), [
+      def_bufp, Def({type:'size_t'}, `${v_name}_length`), Def(pointed, v_name, true), def_freep
+    ], [
+      encode_relp(direct, position),
+      Call('ltp_encode__'+pointed.type, ['free', `${v_name}_length`, v_name])
+    ])
   }
 
   function decode_fpvs (field) {
@@ -101,10 +105,15 @@ size_t ${encode(field)} (byte* buf, int ${v_name}_length, ${pointed.type}* ${v_n
   function encode_fpvs (field) {
     var {pointed,direct, position} = field
     var v_name = 'v_'+field.name
-    return `
-    size_t ${encode(field)} (byte* buf, int ${v_name}_length, ${pointed.type}* ${v_name}, byte* free) {
-      return ltp_encode__${pointed.type}((byte*)(buf+${field.position}), ${v_name}_length, ${v_name});
-    }`
+    return Func('size_t', encode(field), [
+      def_bufp, Def({type:'size_t'}, `${v_name}_length`), Def(pointed, v_name, true), def_freep
+    ], [
+      Call('ltp_encode__'+pointed.type, [
+        Cast(ByteP, `(buf+${field.position})`),
+        v_name+'_length',
+        v_name
+      ])
+    ])
   }
 
   schema.forEach(function (field) {
@@ -155,7 +164,7 @@ size_t ${encode(field)} (byte* buf, int ${v_name}_length, ${pointed.type}* ${v_n
       //for example, it's a fixed size array.
 
       if(field.isLength) {
-        s += encode_direct(field, def_freep, Cast(direct.type, false, `(free-buf-${field.offset|0})`)) 
+        s += encode_direct(field, def_freep, Cast(Type(direct), `(free-buf-${field.offset|0})`)) 
         s += decode_direct(field)
 
         ops_direct.push(Call(encode(field), ['buf', 'free']))
