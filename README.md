@@ -1,31 +1,40 @@
 # ltp
 
-A high performance, readable, and maintainable, in-place encoding format.
+ltp is a parseless copyfree binary encoding format.
+This means that you can read a field out of ltp encoded data without
 
-An "in-place" format is designed so that you can read out individual
-fields without needing to a) examine every byte, and b) without needing to
-create a data structure.
+  a) inspecting every byte.
+  b) going through a complicated state machine.
+  c) creating another in memory data structure.
+
+it's inspired by capt'n'proto, but much simpler.
 
 ## Motivation
 
 High performance and simplicity usually go together. We often think of high
-performance as "more power". With, for example, a car, you can put in a larger
+performance as "more power". To make a car go faster, you can fit a larger
 engine and burn more fuel, faster. But with software, that's wrong. To make
 software faster you can only take away unnecessary work. Often, something
 designed for simplicity is quite fast, because simplicity must also avoid
 unnecessary work. We also like simplicity because it makes it _faster to understand_.
+(again, because you don't have to understand the unnecessary parts)
 
 A format such as JSON may appear simple, because it is so familiar.
 But parsing json text into a data structure involves quite a lot of extra work.
 One aspect of the work is examining each byte in the input, switching between
-states, escaping characters, etc. Another significant aspect is transforming the
-flat bytes into a data structure, (which means the garbage collector must get
-involved) Often, we parse a json object, and then only access one or two fields.
+states that represent escape characters, nesting level, etc.
+Another significant aspect is transforming the flat bytes into a data structure,
+(which means the garbage collector must get involved) Often, we parse a json object,
+and then only access one or two fields, but to do that we recreated another representation
+of the object as a data structure in memory, then threw it away.
+
+That's not environmentally friendly!
+
 If there are a lot of data moving through the system this parsing and data
 structure building can be very significant. People say that the JSON parsing
 libraries built into your system are well optimized, and are fast. They may well
-be fast compared to other JSON libraries, but they still include a lot of
-uncessary work.
+be fast compared to other JSON libraries, or to other encoding formats based around the same idea,
+but they still include a lot of uncessary work.
 
 `ltp` can be pronounced like "litup" or LTP. The joke was that it's "lieutenant
 proto", lieutenant being a lower rank than captain.
