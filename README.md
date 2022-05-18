@@ -30,6 +30,32 @@ uncessary work.
 `ltp` can be pronounced like "litup" or LTP. The joke was that it's "lieutenant
 proto", lieutenant being a lower rank than captain.
 
+## generating code
+
+ltp can currently generate code in C and Zig.
+Both of these languages are good for making wasm.
+
+If you would like to make a PR to add support for another language, see `./generators/`
+
+to generate code, create a js file with a data structure describing the schema.
+
+```
+var schema = {
+  basic: [
+    {name: 'foo', position: 0, direct: {type: 'u8'}},
+    {name: 'bar', position: 1, direct: {type: 'u32'}},
+    {name: 'name', position: 5, direct: {type: 'u8'}, pointed: {type: 'string_u8'}}
+  ]
+}
+
+console.log(require('ltp/generate')(schema, prefix='', includeHeader=true, language='c'))
+```
+running that file with node will output C code to encode and decode your schema.
+`schema` is the data structure describing for objects, prefix is a string that will be prepended to all function names. if `includeHeaders` is false, the utility functions needed by the codec will not be included.
+Use this if you are outputting many schemas into one file. language is the language to output.
+currently `c` and `zig` are supported.
+
+
 ## Prior Work
 
 Sadly, there are not many in-place formats available. This is why I need to both
