@@ -7,8 +7,11 @@
     "test": "test"
   },
   "scripts": {
-    "build": "node test/generate.js > test/build/ltp.c && clang -nostdlib --target=wasm32 test/build/ltp.c -Wl,--no-entry -Wl,--export-all -o test/build/ltp.wasm",
-    "test": "node test/index.js && node test/wasm.js && node test/any.js"
+    "build-c": "node test/generate.js c > test/build/ltp.c && clang -nostdlib --target=wasm32 test/build/ltp.c -Wl,--no-entry -Wl,--export-all -o test/build/ltp.wasm",
+    "build-zig": "node test/generate.js zig > test/build/ltp.zig && zig build-lib -target wasm32-freestanding -dynamic --export-table test/build/ltp.zig && mv ltp.wasm test/build/ltp.wasm",
+    "test-js": "node test/index.js && node test/any.js",
+    "test-wasm": "npm run test-js && npm run build-c && node test/wasm.js && npm run build-zig && node test/wasm.js",
+    "test": "npm run test-js && npm run test-wasm"
   },
   "author": "Dominic Tarr",
   "license": "ISC",
