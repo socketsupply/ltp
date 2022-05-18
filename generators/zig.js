@@ -1,11 +1,30 @@
+var map = {
+  string_u8: '[*:0] u8',
+  string_u16: '[*:0] u8',
+  string_u32: '[*:0] u8',
+
+  fixed_4:  '*[4]u8',
+  fixed_8:  '*[8]u8',
+  fixed_16: '*[16]u8',
+  fixed_20: '*[20]u8',
+  fixed_32: '*[32]u8',
+  fixed_64: '*[64]u8',
+
+  array_u8: '[*]u8'
+}
+
 function Type(codec, pointer=codec.pointer) {
-  return (pointer?'*':'')+codec.type
+    if(map[codec.type])
+      return (map[codec.type] || codec.type)
+    if(pointer) return '[*]'+codec.type
+    return codec.type
+//  return (pointer?'*':'')+codec.type
 }
 //TODO change to Cast(type(codec), expression)
 function Cast (type, expression, _expression) {
   if(_expression) throw new Error('first arg must be type')
   if('string' !== typeof type) throw new Error('type must be string, was:'+JSON.stringify(type))
-  return '('+type+')('+expression+')'
+  return '@ptrCast(*'+(map[type]||type)+',&'+expression+').*'
 }
 //define an arg
 function Def (type, name, _name) {
@@ -22,17 +41,17 @@ function Call(fun, args) {
 }
 function Func (type, name, args, statements) {
   var last = statements.pop()
-  return `pub fn ${name} (${args.filter(Boolean).join(', ')}) ${type} {\n  ` +
+  return `export fn ${name} (${args.filter(Boolean).join(', ')}) ${type} {\n  ` +
       [...statements, (type!='void'?'return ': '')+ last].join(';\n  ')+';\n}\n'
 }
-function Add (...args) {
+function PtrAdd (...args) {
   return '(' + args.join(' + ') + ')'
 }
-function Sub (...args) {
-  return '(' + args.join(' - ') + ')'
+function PtrSub (...args) {
+  return '(' + args.filter(Boolean).map(e => `@ptrToInt(${e})`).join(' - ') + ')'
 }
 function Assign(variable, value) {
   return variable + ' = ' + value
 }
 
-module.exports = {Type, Cast, Def, Var, Call, Func, Add, Sub, Assign}
+module.exports = {Type, Cast, Def, Var, Call, Func, PtrAdd, PtrSub, Assign}

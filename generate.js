@@ -6,7 +6,7 @@ function size(type) {
 }
 
 function generateObjectCodec (prefix, name, schema, map, lang) {
-  var {Type, Cast, Def, Var, Call, Func, Add, Sub, Assign} = lang
+  var {Type, Cast, Def, Var, Call, Func, PtrAdd, PtrSub, Assign} = lang
 
   var ByteP = Type({type:'u8', pointer: true})
   var SizeT = Type({type:'usize'})
@@ -29,29 +29,30 @@ function generateObjectCodec (prefix, name, schema, map, lang) {
 
   function decode_direct(field) {
     return Func(Type(field.direct), decode(field), [def_bufp], [
-      Call(`ltp_decode__${field.direct.type}`, [Add(buf, field.position)])
+      Call(`ltp_decode__${field.direct.type}`, [PtrAdd(buf, field.position)])
     ])
   }
   function encode_direct(field, def = Def(Type(field.direct), 'v_'+field.name), value='v_'+field.name) {
     return Func('void', encode(field), [def_bufp, def], [
       Call(`ltp_encode__${field.direct.type}`, [
-        Cast(ByteP, `buf+${field.position}`),
+        PtrAdd(buf, field.position),
         value
       ])
     ])
   }
 
   function decode_relp (direct, position) {
-    return Call(`ltp_decode_relp__${direct.type}`, [Add(buf, position)])
+    return Call(`ltp_decode_relp__${direct.type}`, [PtrAdd(buf, position)])
   }
 
   function encode_relp (direct, position, target='free') {
-    return Call(`ltp_encode_relp__${direct.type}`, [Add('buf', position), target])
+    return Call(`ltp_encode_relp__${direct.type}`, [PtrAdd('buf', position), target])
   }
 
   function _decode_pointed(field, target) {
     return Func(Type(field.pointed, true), decode(field), [def_bufp], [
-      Cast(ByteP, target)
+//      target
+      Cast(Type(field.pointed, true), target)
     ])
   }
 
@@ -71,7 +72,7 @@ function generateObjectCodec (prefix, name, schema, map, lang) {
   }
 
   function decode_fpvs (field) {
-    return _decode_pointed(field, Add(buf, field.position) )
+    return _decode_pointed(field, PtrAdd(buf, field.position) )
   }
 
   function encode_fpvs (field) {
@@ -79,10 +80,10 @@ function generateObjectCodec (prefix, name, schema, map, lang) {
     var v_name = 'v_'+field.name
     var v_length = v_name+'__length'
     return Func(SizeT, encode(field), [
-      def_bufp, Def(SizeT, v_length), Def(Type(pointed, true), v_name), def_freep
+      def_bufp, Def(SizeT, v_length), Def(Type(pointed, true), v_name)//, def_freep
     ], [
       Call('ltp_encode__'+pointed.type, [
-        Cast(ByteP, Add(buf, field.position)),
+        PtrAdd(buf, field.position),
         v_length,
         v_name
       ])
@@ -105,20 +106,23 @@ function generateObjectCodec (prefix, name, schema, map, lang) {
         //decode_${name}_${field.name} function returns a pointer to the input type.
         s +=(decode_pointed(field))
         s += encode_pointed(field)
-      }
+        ops_pointed.push(
+          Assign(free, PtrAdd(free, Call(encode(field), [buf, v_length, v_name, free]))) 
+        )
+     }
 
       // Pointed only (implicit pointer, A SINGLE fixed position variable sized value)
       else if(!direct && pointed) {
         //generate encode/decode
         s += decode_fpvs(field)
         s += encode_fpvs(field)
+        ops_pointed.push(
+          Assign(free, PtrAdd(free, Call(encode(field), [buf, v_length, v_name]))) 
+        )
       }
       args.push(Def(SizeT, v_length))
       args.push(Def(Type(field.pointed, true), v_name))
-      ops_pointed.push(
-        Assign(free, Add(free, Call(encode(field), [buf, v_length, v_name, free]))) 
-      )
-
+ 
     }
     //note, this sort of encode function, must copy another type data in.
     //would be best to return the bytes used (or, new pointer to next free space)
@@ -138,7 +142,7 @@ function generateObjectCodec (prefix, name, schema, map, lang) {
       //for example, it's a fixed size array.
 
       if(field.isLength) {
-        s += encode_direct(field, def_freep, Cast(Type(direct), Sub(free, buf, field.offset|0))) 
+        s += encode_direct(field, def_freep, Cast(Type(direct), PtrSub(free, buf, field.offset|0))) 
 
         ops_direct.push(Call(encode(field), [buf, free]))
 
@@ -167,10 +171,10 @@ function generateObjectCodec (prefix, name, schema, map, lang) {
   //a single encode function to get the entire object
   if(args.length) {
     s += Func(SizeT, `${prefix}encode__${name}`, [def_bufp, ...args], [
-      Assign(Var(ByteP, free), Add(buf, min)),
+      Assign(Var(ByteP, free), PtrAdd(buf, min)),
       ...ops_pointed,
       ...ops_direct,
-      Cast(SizeT, Sub(free, buf))
+      PtrSub(free, buf)
     ])
   }
 
