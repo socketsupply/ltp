@@ -49,7 +49,7 @@ export fn ltp_decode_relp__u32(buf: [*]u8) [*]u8 {
 }
 
 export fn ltp_decode__length__string_u8 (buf: [*]u8) usize {
-  return ltp_decode__u8(buf);
+  return ltp_decode__u8(buf)-1;
 }
 
 export fn ltp_decode__string_u8 (buf: [*]u8) [*]u8 {
@@ -60,19 +60,19 @@ export fn ltp_encode__string_u8 (buf: [*]u8, len: usize, value: [*]u8) usize {
 //  var len = mem.len(value)+1;
   encode_n(u8, buf, @intCast(u8, len));
   @memcpy(buf+@sizeOf(u8), value, len);
-  return @sizeOf(u8) + len + 1;
+  return @sizeOf(u8) + len;
 }
 export fn ltp_encode__string_u16 (buf: [*]u8, len: usize, value: [*:0]const u8) usize {
 //  var len = mem.len(value)+1;
   encode_n(u16, buf, @intCast(u16, len));
-  @memcpy(buf+@sizeOf(u8), value, len);
-  return @sizeOf(u16) + len + 1;
+  @memcpy(buf+@sizeOf(u16), value, len);
+  return @sizeOf(u16) + len;
 }
 export fn ltp_encode__string_u32 (buf: [*]u8, len: usize, value: [*:0]const u8) usize {
 //  var len = mem.len(value)+1;
   encode_n(u32, buf, @intCast(u32, len));
   @memcpy(buf+@sizeOf(u32), value, len);
-  return @sizeOf(u32) + len + 1;
+  return @sizeOf(u32) + len;
 }
 
 export fn ltp_encode__fixed_4 (buf: [*]u8, fixed: *[4]u8) void {
