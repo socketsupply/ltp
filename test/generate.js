@@ -2,10 +2,11 @@ var schema = {
   basic: [
     {name: 'foo', position: 0, direct: {type: 'u8'}},
     {name: 'bar', position: 1, direct: {type: 'u32'}},
-    {name: 'name', position: 5, direct: {type: 'u8'}, pointed: {type: 'string_u8'}},
+    {name: 'name', position: 5, direct: {type: 'u8'}, pointed: {type: 'string_u8'}}
+    /*,
     {name: 'list', position: 6, direct: {type: 'u8'}, pointed: {
       type: 'array_u8', length: {type: 'u8'}, direct: {type: 'u8'}, pointed: {type: 'string_u8'}
-    }}
+    }}*/
   ],
   simpler: [
     {name: 'foo', position: 0, direct: {type: 'u8'}},
@@ -28,8 +29,6 @@ var schema = {
     {name: 'length', position: 1, direct: {type:'u16'}, isLength: true},
     {name: 'text', position: 3, /*direct: {type: 'u8'}, */pointed: {type: 'string_u16'}},
   ]
-  
-
 }
 
-console.log(require('../generate')(schema))
+console.log(require('../generate')(schema, '', true, process.argv[2]))
