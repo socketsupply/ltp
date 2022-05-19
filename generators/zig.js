@@ -45,7 +45,7 @@ function Call(fun, args) {
 }
 function Func (type, name, args, statements) {
   var last = statements.pop()
-  return `export fn ${name} (${args.filter(Boolean).join(', ')}) ${type} {\n  ` +
+  return `pub export fn ${name} (${args.filter(Boolean).join(', ')}) ${type} {\n  ` +
       [...statements, (type!='void'?'return ': '')+ last].join(';\n  ')+';\n}\n'
 }
 function PtrAdd (...args) {
