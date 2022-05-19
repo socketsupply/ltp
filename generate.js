@@ -142,7 +142,7 @@ function generateObjectCodec (prefix, name, schema, map, lang) {
       //for example, it's a fixed size array.
 
       if(field.isLength) {
-        s += encode_direct(field, def_freep, Cast(Type(direct), PtrSub(free, buf, field.offset|0))) 
+        s += encode_direct(field, def_freep, Cast(Type(direct), PtrSub(free, PtrAdd(buf, -field.offset|0)))) 
 
         ops_direct.push(Call(encode(field), [buf, free]))
 

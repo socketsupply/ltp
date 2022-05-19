@@ -3,6 +3,10 @@ var map = {
   string_u16: '[*:0] u8',
   string_u32: '[*:0] u8',
 
+  buffer_u8: '[*] u8',
+  buffer_u16: '[*] u8',
+  buffer_u32: '[*] u8',
+
   fixed_4:  '*[4]u8',
   fixed_8:  '*[8]u8',
   fixed_16: '*[16]u8',
@@ -45,7 +49,8 @@ function Func (type, name, args, statements) {
       [...statements, (type!='void'?'return ': '')+ last].join(';\n  ')+';\n}\n'
 }
 function PtrAdd (...args) {
-  return '(' + args.join(' + ') + ')'
+  var [first, ...rest] = args.filter(Boolean)
+  return '(' + first + rest.map(e => e < 0 ? ' - '+Math.abs(e) : ' + '+e).join('') + ')'
 }
 function PtrSub (...args) {
   return '(' + args.filter(Boolean).map(e => `@ptrToInt(${e})`).join(' - ') + ')'
