@@ -8,6 +8,7 @@ fn encode_n (comptime T:anytype, buf:[*]u8, value: T) void {
   mem.writeIntLittle(T, @ptrCast(*[@sizeOf(T)]u8, buf), value);
 }
 
+// integers
 
 export fn ltp_decode__u8  (buf: [*]u8) u8  { return decode_n(u8, buf); }
 export fn ltp_decode__u16 (buf: [*]u8) u16 { return decode_n(u16, buf); }
@@ -29,6 +30,16 @@ export fn ltp_encode__i16 (buf: [*]u8, value: i16) void { encode_n(i16, buf, val
 export fn ltp_encode__i32 (buf: [*]u8, value: i32) void { encode_n(i32, buf, value); }
 export fn ltp_encode__i64 (buf: [*]u8, value: i64) void { encode_n(i64, buf, value); }
 
+// floats
+
+export fn ltp_decode__f32 (buf: [*]u8) f32 { return @bitCast(f32, decode_n(u32, buf)); }
+export fn ltp_decode__f64 (buf: [*]u8) f64 { return @bitCast(f64, decode_n(u64, buf)); }
+
+export fn ltp_encode__f32 (buf: [*]u8, value: f32) void { encode_n(u32, buf, @bitCast(u32, value)); }
+export fn ltp_encode__f64 (buf: [*]u8, value: f64) void { encode_n(u64, buf, @bitCast(u64, value)); }
+
+// relative pointers
+
 export fn ltp_encode_relp__u8(buf: [*]u8, target: [*]u8) void {
   encode_n(u8, buf, @intCast(u8, @ptrToInt(target) - @ptrToInt(buf)));
 }
@@ -48,13 +59,30 @@ export fn ltp_decode_relp__u32(buf: [*]u8) [*]u8 {
   return @intToPtr([*]u8, @ptrToInt(buf) + decode_n(u32, buf));
 }
 
-export fn ltp_decode__length__string_u8 (buf: [*]u8) usize {
-  return ltp_decode__u8(buf)-1;
+fn ltp_decode__string(comptime T: type, buf:[*]u8) [*]u8 {
+  return buf+@sizeOf(T);
 }
 
 export fn ltp_decode__string_u8 (buf: [*]u8) [*]u8 {
-  return buf+1;
+  return ltp_decode__string(u8, buf);
 }
+export fn ltp_decode__string_u16 (buf: [*]u8) [*]u8 {
+  return ltp_decode__string(u16, buf);
+}
+export fn ltp_decode__string_u32 (buf: [*]u8) [*]u8 {
+  return ltp_decode__string(u32, buf);
+}
+
+export fn ltp_decode__length__string_u8 (buf: [*]u8) usize {
+  return decode_n(u8, buf)-1;
+}
+export fn ltp_decode__length__string_u16 (buf: [*]u8) usize {
+  return decode_n(u16, buf)-1;
+}
+export fn ltp_decode__length__string_u32 (buf: [*]u8) usize {
+  return decode_n(u32, buf)-1;
+}
+
 
 export fn ltp_encode__string_u8 (buf: [*]u8, len: usize, value: [*]u8) usize {
 //  var len = mem.len(value)+1;
@@ -74,6 +102,16 @@ export fn ltp_encode__string_u32 (buf: [*]u8, len: usize, value: [*:0]const u8) 
   @memcpy(buf+@sizeOf(u32), value, len);
   return @sizeOf(u32) + len;
 }
+
+export fn ltp_encode__buffer_u32 (buf: [*]u8, len: usize, value: [*]const u8) usize {
+//  var len = mem.len(value)+1;
+  encode_n(u32, buf, @intCast(u32, len));
+  @memcpy(buf+@sizeOf(u32), value, len);
+  return @sizeOf(u32) + len;
+}
+
+
+//export fn ltp_decode__buffer
 
 export fn ltp_encode__fixed_4 (buf: [*]u8, fixed: *[4]u8) void {
   buf[0..4].* = fixed.*;
