@@ -40,22 +40,22 @@ pub export fn ltp_encode__f64 (buf: [*]u8, value: f64) void { encode_n(u64, buf,
 
 // relative pointers
 
-export fn ltp_encode_relp__u8(buf: [*]u8, target: [*]u8) void {
+pub export fn ltp_encode_relp__u8(buf: [*]u8, target: [*]u8) void {
   encode_n(u8, buf, @intCast(u8, @ptrToInt(target) - @ptrToInt(buf)));
 }
-export fn ltp_encode_relp__u16(buf: [*]u8, target: [*]u8) void {
+pub export fn ltp_encode_relp__u16(buf: [*]u8, target: [*]u8) void {
   encode_n(u16, buf, @intCast(u16, @ptrToInt(target) - @ptrToInt(buf)));
 }
-export fn ltp_encode_relp__u32(buf: [*]u8, target: [*]u8) void {
+pub export fn ltp_encode_relp__u32(buf: [*]u8, target: [*]u8) void {
   encode_n(u32, buf, @intCast(u32, @ptrToInt(target) - @ptrToInt(buf)));
 }
-export fn ltp_decode_relp__u8(buf: [*]u8) [*]u8 {
+pub export fn ltp_decode_relp__u8(buf: [*]u8) [*]u8 {
   return @intToPtr([*]u8, @ptrToInt(buf) + decode_n(u8, buf));
 }
-export fn ltp_decode_relp__u16(buf: [*]u8) [*]u8 {
+pub export fn ltp_decode_relp__u16(buf: [*]u8) [*]u8 {
   return @intToPtr([*]u8, @ptrToInt(buf) + decode_n(u16, buf));
 }
-export fn ltp_decode_relp__u32(buf: [*]u8) [*]u8 {
+pub export fn ltp_decode_relp__u32(buf: [*]u8) [*]u8 {
   return @intToPtr([*]u8, @ptrToInt(buf) + decode_n(u32, buf));
 }
 
@@ -63,47 +63,46 @@ fn ltp_decode__string(comptime T: type, buf:[*]u8) [*]u8 {
   return buf+@sizeOf(T);
 }
 
-export fn ltp_decode__string_u8 (buf: [*]u8) [*]u8 {
+pub export fn ltp_decode__string_u8 (buf: [*]u8) [*]u8 {
   return ltp_decode__string(u8, buf);
 }
-export fn ltp_decode__string_u16 (buf: [*]u8) [*]u8 {
+pub export fn ltp_decode__string_u16 (buf: [*]u8) [*]u8 {
   return ltp_decode__string(u16, buf);
 }
-export fn ltp_decode__string_u32 (buf: [*]u8) [*]u8 {
+pub export fn ltp_decode__string_u32 (buf: [*]u8) [*]u8 {
   return ltp_decode__string(u32, buf);
 }
 
-export fn ltp_decode__length__string_u8 (buf: [*]u8) usize {
+pub export fn ltp_decode__length__string_u8 (buf: [*]u8) usize {
   return decode_n(u8, buf)-1;
 }
-export fn ltp_decode__length__string_u16 (buf: [*]u8) usize {
+pub export fn ltp_decode__length__string_u16 (buf: [*]u8) usize {
   return decode_n(u16, buf)-1;
 }
-export fn ltp_decode__length__string_u32 (buf: [*]u8) usize {
+pub export fn ltp_decode__length__string_u32 (buf: [*]u8) usize {
   return decode_n(u32, buf)-1;
 }
 
 
-export fn ltp_encode__string_u8 (buf: [*]u8, len: usize, value: [*]u8) usize {
+pub export fn ltp_encode__string_u8 (buf: [*]u8, len: usize, value: [*]u8) usize {
 //  var len = mem.len(value)+1;
   encode_n(u8, buf, @intCast(u8, len));
   @memcpy(buf+@sizeOf(u8), value, len);
   return @sizeOf(u8) + len;
 }
-export fn ltp_encode__string_u16 (buf: [*]u8, len: usize, value: [*:0]const u8) usize {
+pub export fn ltp_encode__string_u16 (buf: [*]u8, len: usize, value: [*:0]const u8) usize {
 //  var len = mem.len(value)+1;
   encode_n(u16, buf, @intCast(u16, len));
   @memcpy(buf+@sizeOf(u16), value, len);
   return @sizeOf(u16) + len;
 }
-export fn ltp_encode__string_u32 (buf: [*]u8, len: usize, value: [*:0]const u8) usize {
+pub export fn ltp_encode__string_u32 (buf: [*]u8, len: usize, value: [*:0]const u8) usize {
 //  var len = mem.len(value)+1;
   encode_n(u32, buf, @intCast(u32, len));
   @memcpy(buf+@sizeOf(u32), value, len);
   return @sizeOf(u32) + len;
 }
-
-export fn ltp_encode__buffer_u32 (buf: [*]u8, len: usize, value: [*]const u8) usize {
+pub export fn ltp_encode__buffer_u32 (buf: [*]u8, len: usize, value: [*]const u8) usize {
 //  var len = mem.len(value)+1;
   encode_n(u32, buf, @intCast(u32, len));
   @memcpy(buf+@sizeOf(u32), value, len);
@@ -113,34 +112,34 @@ export fn ltp_encode__buffer_u32 (buf: [*]u8, len: usize, value: [*]const u8) us
 
 //export fn ltp_decode__buffer
 
-export fn ltp_encode__fixed_4 (buf: [*]u8, fixed: *[4]u8) void {
+pub export fn ltp_encode__fixed_4 (buf: [*]u8, fixed: *[4]u8) void {
   buf[0..4].* = fixed.*;
 }
-export fn ltp_encode__fixed_8 (buf: [*]u8, fixed: *[8]u8) void {
+pub export fn ltp_encode__fixed_8 (buf: [*]u8, fixed: *[8]u8) void {
   buf[0..8].* = fixed.*;
 }
-export fn ltp_encode__fixed_16 (buf: [*]u8, fixed: *[16]u8) void {
+pub export fn ltp_encode__fixed_16 (buf: [*]u8, fixed: *[16]u8) void {
   buf[0..16].* = fixed.*;
 }
-export fn ltp_encode__fixed_32 (buf: [*]u8, fixed: *[32]u8) void {
+pub export fn ltp_encode__fixed_32 (buf: [*]u8, fixed: *[32]u8) void {
   buf[0..32].* = fixed.*;
 }
-export fn ltp_encode__fixed_64 (buf: [*]u8, fixed: *[64]u8) void {
+pub export fn ltp_encode__fixed_64 (buf: [*]u8, fixed: *[64]u8) void {
   buf[0..64].* = fixed.*;
 }
 
-export fn ltp_decode__fixed_4  (buf: [*]u8)  *[4]u8 {
+pub export fn ltp_decode__fixed_4  (buf: [*]u8)  *[4]u8 {
   return buf[0..4];
 }
-export fn ltp_decode__fixed_8  (buf: [*]u8)  *[8]u8 {
+pub export fn ltp_decode__fixed_8  (buf: [*]u8)  *[8]u8 {
   return buf[0..8];
 }
-export fn ltp_decode__fixed_16 (buf: [*]u8) *[16]u8 {
+pub export fn ltp_decode__fixed_16 (buf: [*]u8) *[16]u8 {
   return buf[0..16];
 }
-export fn ltp_decode__fixed_32 (buf: [*]u8) *[32]u8 {
+pub export fn ltp_decode__fixed_32 (buf: [*]u8) *[32]u8 {
   return buf[0..32];
 }
-export fn ltp_decode__fixed_64 (buf: [*]u8) *[64]u8 {
+pub export fn ltp_decode__fixed_64 (buf: [*]u8) *[64]u8 {
   return buf[0..64];
 }
