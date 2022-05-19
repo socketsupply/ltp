@@ -39,7 +39,7 @@ but they still include a lot of uncessary work.
 `ltp` can be pronounced like "litup" or LTP. The joke was that it's "lieutenant
 proto", lieutenant being a lower rank than captain.
 
-## generating code
+## Generating Code
 
 ltp can currently generate code in C and Zig.
 Both of these languages are good for making wasm.
@@ -82,7 +82,7 @@ how it works always just made me more confused. I would start reading and
 be bombarded with too many clever ideas like segments and XOR defaults.
 I wanted something I could easily understand.
 
-## Fixed vs variable size fields
+## Fixed vs Variable size fields
 
 Your basic primitives: numbers, boolean, are always the same size.
 These are always encoded at the start of an object, and in the same position.
@@ -142,7 +142,7 @@ embedded inside another and the pointers remain valid, this is very handy when
 transmitting objects over the network, or embedding objects inside of other
 objects.
 
-## Schema data structure
+## Schema Data Structure
 
 To understand what sort of things ipb can represent, it's helpful to understand
 it's internal data structure.
