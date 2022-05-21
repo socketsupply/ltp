@@ -6,7 +6,7 @@ function size(type) {
 }
 
 function generateObjectCodec (prefix, name, schema, map, lang) {
-  var {Type, Cast, Def, Var, Call, Func, PtrAdd, PtrSub, Assign} = lang
+  var {Type, Cast, Def, Var, Call, Func, PtrAdd, PtrSub, Assign, Add} = lang
 
   var ByteP = Type({type:'u8', pointer: true})
   var SizeT = Type({type:'usize'})
@@ -20,7 +20,13 @@ function generateObjectCodec (prefix, name, schema, map, lang) {
   function encode(field, decoder) {
     return `${prefix}encode__${name}_${field.name}`
   }
-  var args = [], ops_direct = [], ops_pointed = []
+  function encoding_length(field) {
+    return `ltp_encoding_length__${field.pointed.type}`
+//    return `${prefix}encoding_length__${name}_${field.name}`
+  }
+
+
+  var args = [], ops_direct = [], ops_pointed = [], length_args = [], length_ops = []
 
   var def_freep = Def(ByteP, 'free')
   var def_bufp = Def(ByteP, 'buf')
@@ -122,7 +128,8 @@ function generateObjectCodec (prefix, name, schema, map, lang) {
       }
       args.push(Def(SizeT, v_length))
       args.push(Def(Type(field.pointed, true), v_name))
- 
+      length_args.push(Def(SizeT, v_length))
+      length_ops.push(Call(encoding_length(field), [v_length]))
     }
     //note, this sort of encode function, must copy another type data in.
     //would be best to return the bytes used (or, new pointer to next free space)
@@ -143,7 +150,7 @@ function generateObjectCodec (prefix, name, schema, map, lang) {
 
       if(field.isLength) {
         s += encode_direct(field, def_freep, Cast(Type(direct), PtrSub(free, PtrAdd(buf, field.offset|0)))) 
-
+        //XXX if there is an offset we need to add it on to decode.
         ops_direct.push(Call(encode(field), [buf, free]))
 
       }
@@ -157,7 +164,7 @@ function generateObjectCodec (prefix, name, schema, map, lang) {
 
       }
       else {
-        s += (encode_direct(field))     
+        s += (encode_direct(field))
 
         args.push(Def(Type(direct), v_name))
         ops_direct.push(Call(encode(field), [buf, v_name]))
@@ -177,6 +184,9 @@ function generateObjectCodec (prefix, name, schema, map, lang) {
       PtrSub(free, buf)
     ])
   }
+  s += Func(SizeT, `${prefix}encoding_length__${name}`, length_args, [
+    Add(min, ...length_ops)
+  ])
 
   return s + '\n'
 }
