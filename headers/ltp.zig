@@ -73,6 +73,18 @@ pub export fn ltp_decode__string_u32 (buf: [*]u8) [*]u8 {
   return ltp_decode__string(u32, buf);
 }
 
+
+pub export fn ltp_encoding_length__string_u8 (len:usize) usize {
+  return @sizeOf(u8) + len + 1;
+}
+pub export fn ltp_encoding_length__string_u16 (len:usize) usize {
+  return @sizeOf(u16) + len + 1;
+}
+pub export fn ltp_encoding_length__string_u32 (len:usize) usize {
+  return @sizeOf(u32) + len + 1;
+}
+
+
 pub export fn ltp_decode__length__string_u8 (buf: [*]u8) usize {
   return decode_n(u8, buf)-1;
 }
@@ -102,6 +114,44 @@ pub export fn ltp_encode__string_u32 (buf: [*]u8, len: usize, value: [*:0]const 
   @memcpy(buf+@sizeOf(u32), value, len);
   return @sizeOf(u32) + len;
 }
+
+
+pub export fn ltp_decode__length__buffer_u8 (buf: [*]u8) usize {
+  return decode_n(u8, buf);
+}
+pub export fn ltp_decode__length__buffer_u16 (buf: [*]u8) usize {
+  return decode_n(u16, buf);
+}
+pub export fn ltp_decode__length__buffer_u32 (buf: [*]u8) usize {
+  return decode_n(u32, buf);
+}
+
+
+pub export fn ltp_encoding_length__buffer_u8 (len: usize) usize {
+  return @sizeOf(u8) + len;
+}
+pub export fn ltp_encoding_length__buffer_u16 (len: usize) usize {
+  return @sizeOf(u16) + len;
+}
+pub export fn ltp_encoding_length__buffer_u32 (len: usize) usize {
+  return @sizeOf(u32) + len;
+}
+
+
+pub export fn ltp_encode__buffer_u8 (buf: [*]u8, len: usize, value: [*]const u8) usize {
+//  var len = mem.len(value)+1;
+  encode_n(u8, buf, @intCast(u8, len));
+  @memcpy(buf+@sizeOf(u8), value, len);
+  return @sizeOf(u8) + len;
+}
+
+pub export fn ltp_encode__buffer_u16 (buf: [*]u8, len: usize, value: [*]const u8) usize {
+//  var len = mem.len(value)+1;
+  encode_n(u16, buf, @intCast(u16, len));
+  @memcpy(buf+@sizeOf(u16), value, len);
+  return @sizeOf(u16) + len;
+}
+
 pub export fn ltp_encode__buffer_u32 (buf: [*]u8, len: usize, value: [*]const u8) usize {
 //  var len = mem.len(value)+1;
   encode_n(u32, buf, @intCast(u32, len));
