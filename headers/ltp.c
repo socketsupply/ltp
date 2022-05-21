@@ -170,9 +170,10 @@ byte* ltp_decode__string_##X (byte* buf) { \
 //length includes the null at the end of the string
 #define ltp_encode__string(X) \
 size_t ltp_encode__string_##X (byte* buf, X string_length, char *string) { \
-  ltp_encode__##X(buf, string_length); \
+  ltp_encode__##X(buf, string_length+1); \
   _memcpy(buf+sizeof(X), (byte*)string, (u32)string_length); \
-  return (size_t)(sizeof(X) + string_length); \
+  *(buf+sizeof(X)+string_length) = 0;\
+  return (size_t)(sizeof(X) + string_length + 1); \
 }
 
 ltp_encoding_length__string(u8)
