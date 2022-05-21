@@ -19,9 +19,13 @@ function Func (type, name, args, statements) {
   return `${type} ${name} (${args.filter(Boolean).join(', ')}) {\n  ` +
       [...statements, (type!='void'?'return ': '')+ last].join(';\n  ')+';\n}\n'
 }
-function PtrAdd (...args) {
-  return '(u8*)(' + args.join(' + ') + ')'
+function Add (...args) {
+  return '(' + args.join(' + ') + ')'
 }
+function PtrAdd (...args) {
+  return '(u8*)'+Add(...args)
+}
+
 function PtrSub (...args) {
   return '(usize)(' + args.join(' - ') + ')'
 }
@@ -29,4 +33,4 @@ function Assign(variable, value) {
   return variable + ' = ' + value
 }
 
-module.exports = {Type, Cast, Def, Var:Def, Call, Func, PtrAdd, PtrSub, Assign}
+module.exports = {Type, Cast, Def, Var:Def, Call, Func, PtrAdd, PtrSub, Assign, Add}

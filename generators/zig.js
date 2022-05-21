@@ -48,6 +48,9 @@ function Func (type, name, args, statements) {
   return `pub export fn ${name} (${args.filter(Boolean).join(', ')}) ${type} {\n  ` +
       [...statements, (type!='void'?'return ': '')+ last].join(';\n  ')+';\n}\n'
 }
+function Add(...args) {
+  return '(' + args.join(' + ') + ')'
+}
 function PtrAdd (...args) {
   var [first, ...rest] = args.filter(Boolean)
   return '(' + first + rest.map(e => e < 0 ? ' - '+Math.abs(e) : ' + '+e).join('') + ')'
@@ -59,4 +62,4 @@ function Assign(variable, value) {
   return variable + ' = ' + value
 }
 
-module.exports = {Type, Cast, Def, Var, Call, Func, PtrAdd, PtrSub, Assign}
+module.exports = {Type, Cast, Def, Var, Call, Func, PtrAdd, PtrSub, Assign, Add}
