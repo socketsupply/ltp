@@ -253,8 +253,11 @@ tape('single encode call', function (t) {
   var string = 'HI THERE\x00'
   start2 += memory.write(string, cstring2=start2, 'utf8')
   console.log('hi there', memory.slice(cstring2, cstring2+10))
+  //XXX strlen should not include the 0.
   t.equal(strlen(cstring2), string.length-1, "correct string length")
   console.log(strlen(cstring2))
+  //XXX encode string shouldn't copy the 0 from the string. it should copy the non-zero
+  //    chars and then add a zero at the end.
   var bytes = wasm.encode__simpler(start2, 100, 1000, strlen(cstring2)+1, cstring2)
   console.log(memory.slice(start2, start2+32))
   console.log(bytes)
@@ -265,6 +268,9 @@ tape('single encode call', function (t) {
 
   t.end()
 })
+// note: bigName has a single field at position 5.
+// so, 5 bytes of padding.
+// I didn't realize that but worth testing that anyway.
 tape('encode/decode string_u32', function (t) {
   var start2 = start+100
   var cstring2
@@ -272,6 +278,8 @@ tape('encode/decode string_u32', function (t) {
   memory.write(string, cstring2=start2, 'utf8')
   var bytes = wasm.encode__bigName(start, strlen(cstring2)+1, cstring2)
   console.log(memory.slice(start, start+32))
+  t.equal(wasm.encoding_length__bigName(strlen(cstring2)), bytes)
+  t.equal(bytes, 5+4+4+3+1)
 //  t.deepEqual(BN.decode(memory, start2), {name: 'HI THERE'})
   t.end()
 
@@ -290,8 +298,8 @@ tape('encode/decode fpvs', function (t) {
   var b = crypto.randomBytes(64)
   b.copy(memory, fixed_64)
   var bytes = wasm.encode__fixedbuf(_start3, 4, cstring2, fixed_32, fixed_64)
-
   t.equal(bytes, 2+4+32+64)
+  t.equal(wasm.encoding_length__fixedbuf(3), bytes);
   console.log(memory.slice(_start3, _start3+100).toString('hex'))
   console.log(memory.slice(_start3+96, _start3+100).toString('hex'))
   t.deepEqual(
@@ -312,6 +320,7 @@ tape('encode/decode type/length', function (t) {
   t.equal(wasm.decode__typeLengthBuf_length(start4), 1+2+2+4)
 
   t.equal(bytes, 1+2 + 2+4)
+  t.equal(wasm.encoding_length__typeLengthBuf(3), bytes)
 
   t.end()
 })
