@@ -93,8 +93,9 @@ var string = {
   },
   decode: (buffer, start, end) => {
     var terminal = end-1
-    if(buffer[terminal] != 0)
+    if(buffer[terminal] != 0) {
       throw new Error('invalid string termination:' +buffer[terminal]+' (0x'+buffer[terminal].toString(16)+'), at:'+(terminal-start)) 
+    }
     var value = buffer.toString('utf8', start, terminal)
     string.decode.bytes = end - start
     return value
