@@ -151,6 +151,12 @@ int ltp_decode__length__string_##X (byte * buf) { \
   return length - 1; \
 }
 
+//return the byte size needed to encode, including 0 ending
+#define ltp_encoding_length__string(X) \
+int ltp_encoding_length__string_##X (X string_length) { \
+  return sizeof(X) + string_length + 1; \
+}
+
 
 //check the length, if it's valid return pointer to string, else return null pointer.
 #define ltp_decode__string(X) \
@@ -169,20 +175,29 @@ size_t ltp_encode__string_##X (byte* buf, X string_length, char *string) { \
   return (size_t)(sizeof(X) + string_length); \
 }
 
+ltp_encoding_length__string(u8)
 ltp_decode__length__string(u8)
 ltp_decode__string(u8)
 ltp_encode__string(u8)
 
+ltp_encoding_length__string(u16)
 ltp_decode__length__string(u16)
 ltp_decode__string(u16)
 ltp_encode__string(u16)
 
+ltp_encoding_length__string(u32)
 ltp_decode__length__string(u32)
 ltp_decode__string(u32)
 ltp_encode__string(u32)
 
 // Buffer - buffer is just raw memory without 0 terminator and no check
 //          can be used to encode any object where we can just copy the whole thing in.
+#define ltp_encoding_length__buffer(X) \
+int ltp_encoding_length__buffer_##X (X length) { \
+  return sizeof(X) + length; \
+}
+
+
 #define ltp_decode__length__buffer(X) \
 int ltp_decode__length__buffer_##X (byte * buf) { \
   return ltp_decode__##X(buf); \
@@ -204,14 +219,17 @@ size_t ltp_encode__buffer_##X (byte* buf, int buffer_length, char *buffer) { \
   return (size_t)(sizeof(X) + buffer_length); \
 }
 
+ltp_encoding_length__buffer(u8)
 ltp_decode__length__buffer(u8)
 ltp_decode__buffer(u8)
 ltp_encode__buffer(u8)
 
+ltp_encoding_length__buffer(u16)
 ltp_decode__length__buffer(u16)
 ltp_decode__buffer(u16)
 ltp_encode__buffer(u16)
 
+ltp_encoding_length__buffer(u32)
 ltp_decode__length__buffer(u32)
 ltp_decode__buffer(u32)
 ltp_encode__buffer(u32)
