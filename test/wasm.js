@@ -246,6 +246,7 @@ tape('encode via C & compact', function (t) {
   t.deepEqual(S.decode(_buffer, 0), expected3)
   t.end()
 })
+
 tape('single encode call', function (t) {
   var start2 = start+100
   var cstring2
@@ -258,6 +259,10 @@ tape('single encode call', function (t) {
   console.log(memory.slice(start2, start2+32))
   console.log(bytes)
   t.deepEqual(S.decode(memory, start2), {foo: 100, bar: 1000, name: 'HI THERE'})
+
+  var _bytes = wasm.encoding_length__simpler(strlen(cstring2))
+  t.equal(_bytes, bytes, 'give correct encoding_length')
+
   t.end()
 })
 tape('encode/decode string_u32', function (t) {
