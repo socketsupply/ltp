@@ -61,7 +61,7 @@ tape('read raw data', function (t) {
 
   var length = O.encode(expected, memory, start)
   baz = start+O.encode.bytes
-  ltp.codex.string_u8.encode('baz', memory, strlen(baz)+1, baz)
+  ltp.codex.string_u8.encode('baz', memory, strlen(baz), baz)
   console.log(memory.slice(start, start+30))
 
 
@@ -163,8 +163,8 @@ tape('encode via C', function (t) {
   console.log(memory.slice(string_u8, string_u8+5))
   console.log(decode_string(string_u8))
 */
-  var _len = wasm.encode__basic_name(start, strlen(cstring)+1, cstring, free)
-  console.log(_len, strlen(cstring)+1)
+  var _len = wasm.encode__basic_name(start, strlen(cstring), cstring, free)
+//  console.log(_len, strlen(cstring))
   console.log(memory.slice(free, free+_len))
   free += _len
 //  free += len
@@ -209,7 +209,7 @@ tape('encode via C & compact', function (t) {
     return memory.slice(s, s + strlen(s)).toString('utf8')
   }
 
-  memcpy(cstring2, cstring, strlen(cstring)+1)
+  memcpy(cstring2, cstring, strlen(cstring))
   console.log('start-cstring2', decode_cstring(cstring2))
   
 
@@ -223,8 +223,8 @@ tape('encode via C & compact', function (t) {
   var free = start+6
   console.log('start-cstring', decode_cstring(cstring))
 //  console.log('decode__basic_name',  wasm.encode__basic_name(start))
-  console.log('raw', memory.slice(start, free+10))
-  free += wasm.encode__basic_name(start, strlen(cstring)+1, cstring, free)
+  t.equal(strlen(cstring), 5)
+  free += wasm.encode__basic_name(start, strlen(cstring), cstring, free)
   t.equal(free, start+6+1+5+1, 'free pointer must be correct')
   console.log('raw', memory.slice(start, free+10))
   var cstring3 = wasm.decode__basic_name(start)
@@ -255,10 +255,7 @@ tape('single encode call', function (t) {
   console.log('hi there', memory.slice(cstring2, cstring2+10))
   //XXX strlen should not include the 0.
   t.equal(strlen(cstring2), string.length-1, "correct string length")
-  console.log(strlen(cstring2))
-  //XXX encode string shouldn't copy the 0 from the string. it should copy the non-zero
-  //    chars and then add a zero at the end.
-  var bytes = wasm.encode__simpler(start2, 100, 1000, strlen(cstring2)+1, cstring2)
+  var bytes = wasm.encode__simpler(start2, 100, 1000, strlen(cstring2), cstring2)
   console.log(memory.slice(start2, start2+32))
   console.log(bytes)
   t.deepEqual(S.decode(memory, start2), {foo: 100, bar: 1000, name: 'HI THERE'})
@@ -276,7 +273,7 @@ tape('encode/decode string_u32', function (t) {
   var cstring2
   var string = 'LTP\x00'
   memory.write(string, cstring2=start2, 'utf8')
-  var bytes = wasm.encode__bigName(start, strlen(cstring2)+1, cstring2)
+  var bytes = wasm.encode__bigName(start, strlen(cstring2), cstring2)
   console.log(memory.slice(start, start+32))
   t.equal(wasm.encoding_length__bigName(strlen(cstring2)), bytes)
   t.equal(bytes, 5+4+4+3+1)
@@ -297,7 +294,7 @@ tape('encode/decode fpvs', function (t) {
 //  memory.write('0011223344556677889aabbccddeeff', fixed_16, 'utf8')
   var b = crypto.randomBytes(64)
   b.copy(memory, fixed_64)
-  var bytes = wasm.encode__fixedbuf(_start3, 4, cstring2, fixed_32, fixed_64)
+  var bytes = wasm.encode__fixedbuf(_start3, 3, cstring2, fixed_32, fixed_64)
   t.equal(bytes, 2+4+32+64)
   t.equal(wasm.encoding_length__fixedbuf(3), bytes);
   console.log(memory.slice(_start3, _start3+100).toString('hex'))
@@ -315,7 +312,7 @@ tape('encode/decode type/length', function (t) {
   var start4 = start+1000
   var string = 'LTP\x00'
   memory.write(string, cstring2=start4+100, 'utf8')
-  var bytes = wasm.encode__typeLengthBuf(start4, 4, cstring2)
+  var bytes = wasm.encode__typeLengthBuf(start4, 3, cstring2)
   t.equal(wasm.decode__typeLengthBuf_type(start4), 0x99)
   t.equal(wasm.decode__typeLengthBuf_length(start4), 1+2+2+4)
 
